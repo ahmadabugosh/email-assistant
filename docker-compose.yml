@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  email-assistant:
+    build: .
+    container_name: email-assistant
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}
+      - SLACK_CHANNEL_ID=${SLACK_CHANNEL_ID}
+      - GOOGLE_CREDENTIALS_PATH=${GOOGLE_CREDENTIALS_PATH}
+      - GOOGLE_TOKEN_PATH=${GOOGLE_TOKEN_PATH}
+      - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - POLL_INTERVAL=${POLL_INTERVAL:-30}
+      - DB_PATH=/app/data/email_assistant.db
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.json:/app/token.json
+      - ./data:/app/data
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
