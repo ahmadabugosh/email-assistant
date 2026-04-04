@@ -90,6 +90,12 @@ class Database:
             )
             """)
             
+            # Migration: add recipients_json column if missing
+            try:
+                cursor.execute("ALTER TABLE emails ADD COLUMN recipients_json TEXT DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+
             # Indexes for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_gmail_id ON emails(gmail_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_status ON emails(status)")
@@ -106,15 +112,16 @@ class Database:
         sender: str,
         subject: str,
         body: str,
+        recipients_json: str = "",
     ) -> int:
         """Insert email (idempotent)."""
         with self.get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
             INSERT OR IGNORE INTO emails
-            (gmail_id, message_id, thread_id, sender, subject, body)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """, (gmail_id, message_id, thread_id, sender, subject, body))
+            (gmail_id, message_id, thread_id, sender, subject, body, recipients_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (gmail_id, message_id, thread_id, sender, subject, body, recipients_json))
             
             # Get the ID (either newly inserted or existing)
             cursor.execute("SELECT id FROM emails WHERE gmail_id = ?", (gmail_id,))

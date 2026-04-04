@@ -1,12 +1,13 @@
 """Google Sheets API client for fetching portfolio data."""
 import logging
+import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 
 from google.auth.transport.requests import Request
 from google.oauth2.service_account import Credentials
 from google.oauth2.credentials import Credentials as OAuth2Credentials
-from google.auth.oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -50,10 +51,11 @@ class SheetsClient:
                 )
                 creds = flow.run_local_server(port=0)
             
-            # Save token
+            # Save token with restricted permissions
             with open(self.token_path, "w") as f:
                 f.write(creds.to_json())
-        
+            os.chmod(self.token_path, 0o600)
+
         self.service = build("sheets", "v4", credentials=creds)
     
     def get_portfolio(self, client_name: str) -> Optional[Dict[str, Any]]:

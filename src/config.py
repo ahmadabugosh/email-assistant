@@ -2,6 +2,10 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class Config:
     """Configuration from environment variables."""
@@ -13,6 +17,7 @@ class Config:
     SLACK_BOT_TOKEN: str = os.getenv("SLACK_BOT_TOKEN", "")
     SLACK_SIGNING_SECRET: str = os.getenv("SLACK_SIGNING_SECRET", "")
     SLACK_CHANNEL_ID: str = os.getenv("SLACK_CHANNEL_ID", "")
+    SLACK_APP_TOKEN: str = os.getenv("SLACK_APP_TOKEN", "")
     
     # Google
     GOOGLE_CREDENTIALS_PATH: str = os.getenv("GOOGLE_CREDENTIALS_PATH", "./credentials.json")

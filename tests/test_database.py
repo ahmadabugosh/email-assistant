@@ -85,8 +85,31 @@ def test_conversation_history(temp_db):
 def test_mark_email_ignored(temp_db, sample_email):
     """Test marking email as ignored."""
     email_id = temp_db.insert_email(**sample_email)
-    
+
     temp_db.mark_email_ignored(email_id)
-    
+
     email = temp_db.get_email(email_id)
     assert email["status"] == "ignored"
+
+
+def test_gmail_state_history_id(temp_db):
+    """Test history ID storage and retrieval."""
+    assert temp_db.get_last_history_id() is None
+
+    temp_db.update_history_id("12345")
+    assert temp_db.get_last_history_id() == "12345"
+
+    temp_db.update_history_id("67890")
+    assert temp_db.get_last_history_id() == "67890"
+
+
+def test_insert_email_with_recipients(temp_db, sample_email):
+    """Test inserting email with recipients JSON."""
+    import json
+    recipients = json.dumps({"to": "a@test.com", "cc": "b@test.com", "reply_to": ""})
+    email_id = temp_db.insert_email(**sample_email, recipients_json=recipients)
+
+    email = temp_db.get_email(email_id)
+    assert email["recipients_json"] == recipients
+    parsed = json.loads(email["recipients_json"])
+    assert parsed["cc"] == "b@test.com"
