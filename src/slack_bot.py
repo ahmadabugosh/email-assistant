@@ -157,15 +157,17 @@ class SlackBot:
             thread_ts = response["ts"]
 
             # Post details inside the thread
-            self.app.client.chat_postMessage(
+            detail_response = self.app.client.chat_postMessage(
                 channel=self.channel_id,
                 thread_ts=thread_ts,
                 blocks=detail_blocks,
                 text=f"Suggested reply for: {subject}",
             )
+            detail_message_ts = detail_response["ts"]
 
             self.database.insert_slack_thread(
-                email_db_id, self.channel_id, thread_ts
+                email_db_id, self.channel_id, thread_ts,
+                detail_message_ts=detail_message_ts,
             )
 
             logger.info(f"Posted email notification to Slack (thread: {thread_ts})")
@@ -206,11 +208,12 @@ class SlackBot:
         self.database.update_email_final_reply(email_db_id, reply_text)
 
         # Send the email via Gmail
-        status_msg = "Email marked for sending."
+        success = False
         if self.gmail_client:
             recipients = json.loads(email.get("recipients_json") or "{}")
             to_addr = recipients.get("reply_to") or email["sender"]
             cc_addr = recipients.get("cc", "")
+            in_reply_to = email.get("rfc_message_id", "")
 
             success = self.gmail_client.send_reply(
                 to=to_addr,
@@ -218,12 +221,36 @@ class SlackBot:
                 body=reply_text,
                 thread_id=email["thread_id"],
                 cc=cc_addr,
+                in_reply_to=in_reply_to,
             )
+
+        logger.info(f"Email {email_db_id}: {'sent' if success else 'failed'}")
+
+        # Replace the detail message in Slack with sent confirmation
+        thread_data = self.database.get_slack_thread_for_email(email_db_id)
+        detail_ts = thread_data.get("detail_message_ts") if thread_data else None
+
+        if detail_ts and success:
+            sent_blocks = [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Sent Reply:*\n```{reply_text}```",
+                    },
+                },
+            ]
+            try:
+                self.app.client.chat_update(
+                    channel=self.channel_id,
+                    ts=detail_ts,
+                    blocks=sent_blocks,
+                    text=f"Sent reply to: {email['subject']}",
+                )
+            except Exception as e:
+                logger.error(f"Error updating detail message: {e}")
+        elif thread_ts:
             status_msg = "Email sent successfully." if success else "Failed to send email."
-
-        logger.info(f"Email {email_db_id}: {status_msg}")
-
-        if thread_ts:
             try:
                 self.app.client.chat_postMessage(
                     channel=self.channel_id,

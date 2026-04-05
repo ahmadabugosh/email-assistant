@@ -90,17 +90,23 @@ class Database:
             )
             """)
             
-            # Migration: add recipients_json column if missing
-            try:
-                cursor.execute("ALTER TABLE emails ADD COLUMN recipients_json TEXT DEFAULT ''")
-            except sqlite3.OperationalError:
-                pass  # Column already exists
+            # Migrations: add columns if missing
+            for migration in [
+                "ALTER TABLE emails ADD COLUMN recipients_json TEXT DEFAULT ''",
+                "ALTER TABLE emails ADD COLUMN rfc_message_id TEXT DEFAULT ''",
+                "ALTER TABLE slack_threads ADD COLUMN detail_message_ts TEXT DEFAULT ''",
+            ]:
+                try:
+                    cursor.execute(migration)
+                except sqlite3.OperationalError:
+                    pass  # Column already exists
 
             # Indexes for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_gmail_id ON emails(gmail_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_status ON emails(status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_slack_thread ON slack_threads(thread_ts)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversation_thread ON conversations(slack_thread_ts)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_rfc_message_id ON emails(rfc_message_id)")
     
     # ============ EMAILS ============
     
@@ -113,16 +119,17 @@ class Database:
         subject: str,
         body: str,
         recipients_json: str = "",
+        rfc_message_id: str = "",
     ) -> int:
         """Insert email (idempotent)."""
         with self.get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
             INSERT OR IGNORE INTO emails
-            (gmail_id, message_id, thread_id, sender, subject, body, recipients_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (gmail_id, message_id, thread_id, sender, subject, body, recipients_json))
-            
+            (gmail_id, message_id, thread_id, sender, subject, body, recipients_json, rfc_message_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (gmail_id, message_id, thread_id, sender, subject, body, recipients_json, rfc_message_id))
+
             # Get the ID (either newly inserted or existing)
             cursor.execute("SELECT id FROM emails WHERE gmail_id = ?", (gmail_id,))
             row = cursor.fetchone()
@@ -186,6 +193,18 @@ class Database:
             cursor.execute("SELECT * FROM emails WHERE id = ?", (email_id,))
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    def email_exists_by_rfc_id(self, rfc_message_id: str) -> bool:
+        """Check if an email with this RFC Message-ID already exists."""
+        if not rfc_message_id:
+            return False
+        with self.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT 1 FROM emails WHERE rfc_message_id = ? LIMIT 1",
+                (rfc_message_id,),
+            )
+            return cursor.fetchone() is not None
     
     # ============ SLACK THREADS ============
     
@@ -194,14 +213,15 @@ class Database:
         email_db_id: int,
         channel_id: str,
         thread_ts: str,
+        detail_message_ts: str = "",
     ) -> int:
         """Insert slack thread mapping."""
         with self.get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-            INSERT INTO slack_threads (email_db_id, channel_id, thread_ts)
-            VALUES (?, ?, ?)
-            """, (email_db_id, channel_id, thread_ts))
+            INSERT INTO slack_threads (email_db_id, channel_id, thread_ts, detail_message_ts)
+            VALUES (?, ?, ?, ?)
+            """, (email_db_id, channel_id, thread_ts, detail_message_ts))
             return cursor.lastrowid
     
     def get_slack_thread(self, thread_ts: str) -> Optional[Dict[str, Any]]:

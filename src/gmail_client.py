@@ -173,6 +173,7 @@ class GmailClient:
             cc = get_header("Cc")
             reply_to = get_header("Reply-To")
             date = get_header("Date")
+            rfc_message_id = get_header("Message-ID") or get_header("Message-Id")
 
             body = self._extract_body(message["payload"])
 
@@ -186,6 +187,7 @@ class GmailClient:
                 "cc": cc,
                 "reply_to": reply_to,
                 "date": date,
+                "rfc_message_id": rfc_message_id,
                 "body": body,
             }
 
@@ -227,14 +229,18 @@ class GmailClient:
         body: str,
         thread_id: str,
         cc: str = "",
+        in_reply_to: str = "",
     ) -> bool:
         """Send email reply in Gmail thread."""
         try:
             message = MIMEText(body)
             message["to"] = to
-            message["subject"] = f"Re: {subject}"
+            message["subject"] = f"Re: {subject}" if not subject.lower().startswith("re:") else subject
             if cc:
                 message["cc"] = cc
+            if in_reply_to:
+                message["In-Reply-To"] = in_reply_to
+                message["References"] = in_reply_to
 
             raw_message = base64.urlsafe_b64encode(
                 message.as_bytes()

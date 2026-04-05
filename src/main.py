@@ -73,10 +73,60 @@ class EmailAssistant:
         self.running = True
         logger.info("Email assistant initialized")
     
+    async def _recover_unprocessed(self) -> None:
+        """Retry any emails that were fetched but never fully processed."""
+        unprocessed = self.database.get_pending_emails()
+        if not unprocessed:
+            return
+
+        logger.info(f"Recovering {len(unprocessed)} unprocessed emails from previous run")
+        for email in unprocessed:
+            try:
+                await self._process_pending_email(email)
+            except Exception as e:
+                logger.error(
+                    f"Error recovering email {email.get('id')}: {e}",
+                    exc_info=True,
+                )
+
+    async def _process_pending_email(self, db_email: dict) -> None:
+        """Process an email that's already in the database but has no category."""
+        email_db_id = db_email["id"]
+        # Rebuild the email dict in the format _process_single_email expects
+        email = {
+            "gmail_id": db_email["gmail_id"],
+            "message_id": db_email["message_id"],
+            "thread_id": db_email["thread_id"],
+            "subject": db_email["subject"],
+            "sender": db_email["sender"],
+            "body": db_email["body"],
+            "date": db_email.get("created_at", ""),
+        }
+
+        category = self.email_processor.categorize_email(email)
+        self.database.update_email_category(email_db_id, category)
+        logger.info(f"Recovered email {email_db_id} categorized as: {category}")
+
+        suggested_reply = self.email_processor.generate_reply(email, category)
+        self.database.update_email_suggested_reply(email_db_id, suggested_reply)
+
+        try:
+            self.slack_bot.send_email_notification(
+                email, category, suggested_reply, email_db_id
+            )
+        except Exception as e:
+            logger.error(f"Failed to send recovered email to Slack: {e}")
+            raise
+
+        self.gmail_client.mark_as_read(email["gmail_id"])
+
     async def process_emails_loop(self) -> None:
         """Main loop: poll for new emails and process them."""
         logger.info(f"Starting email polling loop (interval: {self.config.POLL_INTERVAL}s)")
-        
+
+        # Recover any emails that failed processing on a previous run
+        await self._recover_unprocessed()
+
         while self.running:
             try:
                 await self._process_batch()
@@ -91,10 +141,11 @@ class EmailAssistant:
         last_history_id = self.database.get_last_history_id()
 
         if last_history_id is None:
-            # First run: full sync
-            logger.info("First run — performing full email sync")
-            emails, new_history_id = self.gmail_client.get_new_emails()
+            # First run: just save current history ID, process only new emails going forward
+            logger.info("First run — saving current history ID (processing new emails only)")
+            new_history_id = self.gmail_client.get_current_history_id()
             self.database.update_history_id(new_history_id)
+            return
         else:
             try:
                 # Incremental sync via History API
@@ -105,9 +156,10 @@ class EmailAssistant:
                 self.database.update_history_id(new_history_id)
             except HttpError as e:
                 if e.resp.status == 404:
-                    logger.warning("History ID expired, falling back to full sync")
-                    emails, new_history_id = self.gmail_client.get_new_emails()
+                    logger.warning("History ID expired, resetting to current point")
+                    new_history_id = self.gmail_client.get_current_history_id()
                     self.database.update_history_id(new_history_id)
+                    return
                 else:
                     raise
 
@@ -133,6 +185,12 @@ class EmailAssistant:
 
         logger.info(f"Processing email: {subject}")
 
+        # Deduplicate by RFC Message-ID (same email can have different Gmail IDs)
+        rfc_message_id = email.get("rfc_message_id", "")
+        if rfc_message_id and self.database.email_exists_by_rfc_id(rfc_message_id):
+            logger.info(f"Email {gmail_id} already exists (RFC Message-ID: {rfc_message_id}), skipping")
+            return
+
         # Build recipients JSON for CC/Reply-To support
         recipients = json.dumps({
             "to": email.get("to", ""),
@@ -149,6 +207,7 @@ class EmailAssistant:
             subject=email["subject"],
             body=email["body"],
             recipients_json=recipients,
+            rfc_message_id=email.get("rfc_message_id", ""),
         )
 
         # Skip if already processed

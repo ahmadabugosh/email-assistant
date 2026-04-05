@@ -59,6 +59,10 @@ This system:
 - Database-backed state tracking with idempotent processing
 - Automatic fallback to full sync if history ID expires
 
+## How It Works
+
+For a detailed look at the system internals — Gmail reliability guarantees, email processing pipeline, Slack interaction flow, and more — see **[docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)**.
+
 ## Prerequisites
 
 - **Python 3.9+**
@@ -243,6 +247,8 @@ email-assistant/
 │   ├── test_gmail_client.py    # Gmail client tests
 │   ├── test_slack_bot.py       # Slack bot tests
 │   └── test_tools.py           # Tools tests
+├── docs/
+│   └── HOW_IT_WORKS.md         # Detailed system internals documentation
 ├── requirements.txt            # Python dependencies
 ├── .env.example                # Environment template
 ├── .gitignore                  # Git ignore rules
