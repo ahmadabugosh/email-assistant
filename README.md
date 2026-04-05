@@ -187,6 +187,8 @@ python3 -m pytest --cov=src tests/
 python3 -m pytest tests/test_slack_bot.py -v
 ```
 
+See [`docs/TESTING.md`](docs/TESTING.md) for details on the test layout, fixtures, mocking conventions, and how to add new tests.
+
 ## Configuration
 
 ### Environment Variables
