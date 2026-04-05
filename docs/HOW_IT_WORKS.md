@@ -2,6 +2,8 @@
 
 A detailed look at how the Email Assistant works behind the scenes — from Gmail polling to Slack interaction to sending replies.
 
+![Workflow](images/workflow.png)
+
 ## Table of Contents
 
 - [Lifecycle of an Email](#lifecycle-of-an-email)
