@@ -14,6 +14,8 @@ This system:
 
 ## Architecture
 
+![System Architecture](docs/images/architecture.png)
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Email Assistant                           │
