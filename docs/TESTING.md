@@ -1,5 +1,7 @@
 # Testing Guide
 
+![Test Suite Overview](images/testing-overview.png)
+
 This document describes how the test suite for the email assistant is structured, what each test module covers, and how to run and extend the tests.
 
 ## Overview
