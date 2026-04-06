@@ -70,6 +70,10 @@ class EmailAssistant:
             slack_app_token=self.config.SLACK_APP_TOKEN,
         )
         
+        # Cache the authenticated user's email to filter out self-sent messages
+        self.user_email = self.gmail_client.get_user_email()
+        logger.info(f"Authenticated as: {self.user_email}")
+
         self.running = True
         logger.info("Email assistant initialized")
     
@@ -184,6 +188,12 @@ class EmailAssistant:
         subject = email.get("subject", "No Subject")
 
         logger.info(f"Processing email: {subject}")
+
+        # Skip emails sent by the authenticated user (e.g., our own replies)
+        sender = email.get("sender", "")
+        if self.user_email and self.user_email.lower() in sender.lower():
+            logger.info(f"Skipping self-sent email: {subject}")
+            return
 
         # Deduplicate by RFC Message-ID (same email can have different Gmail IDs)
         rfc_message_id = email.get("rfc_message_id", "")

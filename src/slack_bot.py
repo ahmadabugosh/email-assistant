@@ -177,14 +177,52 @@ class SlackBot:
             logger.error(f"Error posting to Slack: {e}")
             raise
     
-    def post_updated_reply(self, thread_ts: str, updated_reply: str) -> None:
-        """Post updated reply in thread."""
+    def post_updated_reply(self, thread_ts: str, updated_reply: str, email_db_id: int) -> None:
+        """Post updated reply in thread with action buttons."""
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Updated Suggested Reply:*\n```{updated_reply}```",
+                },
+            },
+            {"type": "divider"},
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Send"},
+                        "value": str(email_db_id),
+                        "action_id": "send_email",
+                        "style": "primary",
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Edit"},
+                        "value": str(email_db_id),
+                        "action_id": "edit_email",
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Ignore"},
+                        "value": str(email_db_id),
+                        "action_id": "ignore_email",
+                        "style": "danger",
+                    },
+                ],
+            },
+        ]
         try:
-            self.app.client.chat_postMessage(
+            response = self.app.client.chat_postMessage(
                 channel=self.channel_id,
                 thread_ts=thread_ts,
-                text=f"*Updated Suggested Reply:*\n```{updated_reply}```",
+                blocks=blocks,
+                text=f"Updated Suggested Reply",
             )
+            # Update detail_message_ts so Send replaces this message
+            self.database.update_detail_message_ts(email_db_id, response["ts"])
         except Exception as e:
             logger.error(f"Error posting updated reply: {e}")
     
@@ -321,8 +359,8 @@ class SlackBot:
         # Update in database
         self.database.update_email_suggested_reply(email_db_id, refined_reply)
         
-        # Post updated reply
-        self.post_updated_reply(thread_ts, refined_reply)
+        # Post updated reply with action buttons
+        self.post_updated_reply(thread_ts, refined_reply, email_db_id)
         
         # Add to conversation history
         self.database.add_conversation(thread_ts, "assistant", refined_reply)

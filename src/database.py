@@ -224,6 +224,16 @@ class Database:
             """, (email_db_id, channel_id, thread_ts, detail_message_ts))
             return cursor.lastrowid
     
+    def update_detail_message_ts(self, email_db_id: int, detail_message_ts: str) -> None:
+        """Update the detail message timestamp for an email's Slack thread."""
+        with self.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            UPDATE slack_threads
+            SET detail_message_ts = ?
+            WHERE email_db_id = ?
+            """, (detail_message_ts, email_db_id))
+
     def get_slack_thread(self, thread_ts: str) -> Optional[Dict[str, Any]]:
         """Get slack thread by thread_ts."""
         with self.get_db() as conn:

@@ -67,6 +67,11 @@ class GmailClient:
 
     # ============ History API ============
 
+    def get_user_email(self) -> str:
+        """Get the authenticated user's email address."""
+        profile = self.service.users().getProfile(userId="me").execute()
+        return profile.get("emailAddress", "")
+
     def get_current_history_id(self) -> str:
         """Get the current historyId from Gmail profile."""
         profile = self.service.users().getProfile(userId="me").execute()
