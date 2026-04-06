@@ -101,9 +101,12 @@ Respond with ONLY the category name, nothing else."""
         elif category == "Investment Advice":
             if is_known_client:
                 query = self._extract_investment_query(body)
-                if query:
-                    search_results = self.toolkit.web_search(query)
-                    context += f"\n\nRelevant Research:\n{search_results}"
+                if not query:
+                    # Fallback: use subject + body snippet as search query
+                    query = f"investment advice {subject} {body[:80]}"
+                logger.info(f"Investment Advice search query: {query}")
+                search_results = self.toolkit.web_search(query)
+                context += f"\n\nRelevant Research:\n{search_results}"
             else:
                 # Override the generic non-client message with an Investment Advice-specific decline
                 context = (

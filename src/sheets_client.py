@@ -36,11 +36,14 @@ class SheetsClient:
         all_portfolios = self._get_all_portfolios()
 
         email_lower = email.lower().strip()
+        logger.info(f"Looking up client by email: {email_lower} (sheet has {len(all_portfolios)} portfolios)")
         for portfolio in all_portfolios:
             portfolio_email = portfolio.get("email", "").lower().strip()
             if portfolio_email and portfolio_email == email_lower:
+                logger.info(f"Matched client: {portfolio.get('name', 'unknown')}")
                 return portfolio
 
+        logger.info(f"No client match for {email_lower}")
         return None
 
     def get_all_portfolios(self) -> List[Dict[str, Any]]:
