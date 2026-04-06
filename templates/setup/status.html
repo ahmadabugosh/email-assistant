@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Status{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>System Status</h2>
+
+    <div class="status-grid">
+        {% for name, ok in checks.items() %}
+        <div class="status-row">
+            <span>{{ name }}</span>
+            {% if ok %}
+            <span class="badge badge-ok">OK</span>
+            {% else %}
+            <span class="badge badge-error">Missing</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if all_ok %}
+<div class="alert alert-success">All systems operational.</div>
+{% else %}
+<div class="alert alert-info">
+    Some configuration is missing.
+    <a href="/setup/gmail" style="font-weight:600;">Run Setup Wizard</a>
+</div>
+{% endif %}
+{% endblock %}

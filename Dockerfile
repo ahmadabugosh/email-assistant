@@ -7,18 +7,23 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements and install
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ src/
-COPY .env .env
+COPY templates/ templates/
+COPY static/ static/
+COPY run_web.py .
 
-# Create data directory for database
-RUN mkdir -p /app/data
+# Data directory (mount a Railway volume here at /data)
+RUN mkdir -p /data
 
-# Run the application
-CMD ["python", "-m", "src.main"]
+ENV DATA_DIR=/data
+ENV PORT=8080
+
+EXPOSE 8080
+
+# Single gunicorn worker to avoid race conditions with background polling thread
+CMD ["gunicorn", "-w", "1", "--bind", "0.0.0.0:8080", "--timeout", "120", "run_web:app"]

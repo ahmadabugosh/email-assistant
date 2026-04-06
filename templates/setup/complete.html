@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Setup Complete{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center;">
+    <h1>Setup Complete!</h1>
+    <p>Your email assistant is now running. New emails will appear in Slack for you to review and approve.</p>
+
+    <div class="alert alert-success">
+        All systems are go. The assistant is polling for new emails.
+    </div>
+
+    <a href="/status" class="btn btn-primary" style="margin-top:1rem;">View Status</a>
+</div>
+{% endblock %}

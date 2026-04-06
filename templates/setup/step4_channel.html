@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Step 4: Select Channel{% endblock %}
+{% block content %}
+<div class="steps">
+    <div class="step-dot done"></div>
+    <div class="step-dot done"></div>
+    <div class="step-dot done"></div>
+    <div class="step-dot active"></div>
+</div>
+
+<div class="card">
+    <h2>Step 4: Select Slack Channel</h2>
+    <p>Choose the channel where email notifications will be posted. The bot must be a member of the channel.</p>
+
+    <form method="POST" action="/setup/channel">
+        <div class="form-group">
+            <label for="channel_id">Channel</label>
+            <select id="channel_id" name="channel_id" required>
+                <option value="">-- Select a channel --</option>
+                {% for channel in channels %}
+                <option value="{{ channel.id }}" {% if channel.id == selected_channel %}selected{% endif %}>
+                    #{{ channel.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {% if not channels %}
+        <div class="alert alert-info">
+            No channels found. Make sure the bot has been invited to at least one channel.
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-full">Finish Setup</button>
+    </form>
+</div>
+{% endblock %}

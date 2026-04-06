@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Step 3: API Keys{% endblock %}
+{% block content %}
+<div class="steps">
+    <div class="step-dot done"></div>
+    <div class="step-dot done"></div>
+    <div class="step-dot active"></div>
+    <div class="step-dot"></div>
+</div>
+
+<div class="card">
+    <h2>Step 3: API Keys</h2>
+    <p>Enter the remaining configuration values.</p>
+
+    <form method="POST" action="/setup/keys">
+        <div class="form-group">
+            <label for="openai_api_key">OpenAI API Key *</label>
+            <div class="hint">Used for email categorization and reply generation (gpt-4o-mini)</div>
+            <input type="password" id="openai_api_key" name="openai_api_key"
+                   value="{{ current_values.get('OPENAI_API_KEY', '') }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="google_sheet_id">Google Sheet ID *</label>
+            <div class="hint">The ID from your portfolio spreadsheet URL</div>
+            <input type="text" id="google_sheet_id" name="google_sheet_id"
+                   value="{{ current_values.get('GOOGLE_SHEET_ID', '') }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="tavily_api_key">Tavily API Key (optional)</label>
+            <div class="hint">Enables web search for richer email replies</div>
+            <input type="password" id="tavily_api_key" name="tavily_api_key"
+                   value="{{ current_values.get('TAVILY_API_KEY', '') }}">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full">Save & Continue</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Step 1: Connect Gmail{% endblock %}
+{% block content %}
+{% set step = 1 %}
+{% include "base.html" ignore missing %}
+
+<div class="steps">
+    <div class="step-dot active"></div>
+    <div class="step-dot"></div>
+    <div class="step-dot"></div>
+    <div class="step-dot"></div>
+</div>
+
+<div class="card">
+    <h2>Step 1: Connect Gmail</h2>
+    <p>Grant the assistant read and send access to your Gmail account. We use OAuth so your password is never shared.</p>
+
+    {% if gmail_connected %}
+    <div class="alert alert-success">Gmail connected successfully!</div>
+    <a href="/setup/slack" class="btn btn-primary btn-full">Continue to Slack</a>
+    {% else %}
+    <a href="/setup/gmail/authorize" class="btn btn-primary btn-full">Connect Gmail</a>
+    {% endif %}
+</div>
+{% endblock %}

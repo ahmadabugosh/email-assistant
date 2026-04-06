@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Email Assistant - Setup{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center;">
+    <h1>Email Assistant</h1>
+    <p>AI-powered email management for investment advisers. Reads your Gmail, categorizes emails, suggests replies, and sends them to Slack for review.</p>
+</div>
+
+<div class="card">
+    <h2>What you'll set up</h2>
+    <ul class="features">
+        <li>Connect your Gmail account</li>
+        <li>Add the bot to your Slack workspace</li>
+        <li>Configure your OpenAI and Google Sheet keys</li>
+        <li>Pick a Slack channel for notifications</li>
+    </ul>
+</div>
+
+<a href="/setup/gmail" class="btn btn-primary btn-full">Get Started</a>
+{% endblock %}

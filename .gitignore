@@ -44,8 +44,13 @@ env/
 
 # Credentials and tokens
 credentials.json
+web_credentials.json
 token.json
+
+# Ignore all JSON except config files checked into git
 *.json
+!railway.json
+!package.json
 
 # Database
 *.db

@@ -177,6 +177,93 @@ class SlackBot:
             logger.error(f"Error posting to Slack: {e}")
             raise
     
+    def send_followup_notification(
+        self,
+        email: Dict[str, Any],
+        category: str,
+        suggested_reply: str,
+        email_db_id: int,
+        existing_thread_ts: str,
+    ) -> str:
+        """Post a follow-up email into an existing Slack thread."""
+        sender = email.get("sender", "Unknown")
+        date = email.get("date", "Unknown")
+        body_preview = email.get("body", "")[:500]
+
+        blocks = [
+            {"type": "divider"},
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*New Reply* from {sender} — _{category}_\n*Received:* {date}",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Email Body:*\n```{body_preview}```",
+                },
+            },
+            {"type": "divider"},
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Suggested Reply:*\n```{suggested_reply}```",
+                },
+            },
+            {"type": "divider"},
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Send"},
+                        "value": str(email_db_id),
+                        "action_id": "send_email",
+                        "style": "primary",
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Edit"},
+                        "value": str(email_db_id),
+                        "action_id": "edit_email",
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Ignore"},
+                        "value": str(email_db_id),
+                        "action_id": "ignore_email",
+                        "style": "danger",
+                    },
+                ],
+            },
+        ]
+
+        try:
+            detail_response = self.app.client.chat_postMessage(
+                channel=self.channel_id,
+                thread_ts=existing_thread_ts,
+                blocks=blocks,
+                text=f"New reply from {sender}",
+            )
+            detail_message_ts = detail_response["ts"]
+
+            # Map this email to the existing thread
+            self.database.insert_slack_thread(
+                email_db_id, self.channel_id, existing_thread_ts,
+                detail_message_ts=detail_message_ts,
+            )
+
+            logger.info(f"Posted follow-up in existing thread: {existing_thread_ts}")
+            return existing_thread_ts
+
+        except Exception as e:
+            logger.error(f"Error posting follow-up to Slack: {e}")
+            raise
+
     def post_updated_reply(self, thread_ts: str, updated_reply: str, email_db_id: int) -> None:
         """Post updated reply in thread with action buttons."""
         blocks = [
@@ -366,12 +453,15 @@ class SlackBot:
         self.database.add_conversation(thread_ts, "assistant", refined_reply)
     
     def start(self) -> None:
-        """Start the Slack bot listener via Socket Mode."""
+        """Start the Slack bot listener.
+
+        Uses Socket Mode if SLACK_APP_TOKEN is set (local dev),
+        otherwise logs that HTTP mode is expected (Railway / Flask).
+        """
         if not self.app_token:
-            logger.error(
-                "SLACK_APP_TOKEN not set — interactive features (buttons, messages) "
-                "will not work. Enable Socket Mode in your Slack app settings and "
-                "set SLACK_APP_TOKEN to an xapp-... token."
+            logger.info(
+                "SLACK_APP_TOKEN not set — running in HTTP mode. "
+                "Slack events should be routed to /slack/events via Flask."
             )
             return
         logger.info("Starting Slack bot (Socket Mode)...")
