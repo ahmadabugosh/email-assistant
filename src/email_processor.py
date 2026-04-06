@@ -72,6 +72,7 @@ Respond with ONLY the category name, nothing else."""
         email: Dict[str, Any],
         category: str,
         client_portfolio: Dict[str, Any] = None,
+        referral_meta: Dict[str, Any] = None,
     ) -> str:
         """
         Generate suggested reply using LLM.
@@ -104,14 +105,37 @@ Respond with ONLY the category name, nothing else."""
                 context += f"\n\nRelevant Research:\n{search_results}"
 
         elif category == "Referrals":
-            to = email.get("to", "")
-            cc = email.get("cc", "")
-            recipients_info = ""
-            if to:
-                recipients_info += f"\nTo: {to}"
-            if cc:
-                recipients_info += f"\nCC: {cc}"
-            context += f"\n\nThis is a referral email with multiple recipients.{recipients_info}\nAcknowledge the referrer and address the new client(s). Use a professional, courteous tone."
+            if referral_meta:
+                referrer_name = referral_meta.get("referrer_name", "the referrer")
+                referred = referral_meta.get("referred", [])
+                referred_names = ", ".join(r.get("name") or r.get("email") for r in referred) if referred else "the new client"
+                is_first_reply = referral_meta.get("is_first_reply", True)
+
+                if is_first_reply:
+                    context += (
+                        f"\n\nThis is a REFERRAL email. The referrer is {referrer_name}."
+                        f"\nThe referred person(s): {referred_names}."
+                        f"\nIMPORTANT instructions for this first reply:"
+                        f"\n- Thank {referrer_name} for the referral and mention they are being moved to BCC"
+                        f"\n- Welcome {referred_names} warmly"
+                        f"\n- Suggest {referred_names} schedule a call to discuss how we can help"
+                        f"\n- Address BOTH the referrer and the referred person(s)"
+                    )
+                else:
+                    context += (
+                        f"\n\nThis is a FOLLOW-UP in a referral thread. The referrer has been removed."
+                        f"\nAddress ONLY {referred_names} directly."
+                        f"\nDo NOT mention the referrer or BCC. Treat this as a direct conversation with {referred_names}."
+                    )
+            else:
+                to = email.get("to", "")
+                cc = email.get("cc", "")
+                recipients_info = ""
+                if to:
+                    recipients_info += f"\nTo: {to}"
+                if cc:
+                    recipients_info += f"\nCC: {cc}"
+                context += f"\n\nThis is a referral email with multiple recipients.{recipients_info}\nAcknowledge the referrer and address the new client(s). Use a professional, courteous tone."
 
         # Build system prompt based on category
         system_prompt = self._get_system_prompt(category)
@@ -227,8 +251,9 @@ Base your suggestions on research and data provided. Be conservative in recommen
 Always mention risks and suggest consulting with a financial advisor if appropriate.""",
 
             "Referrals": """You are a professional investment adviser responding to client referrals.
-Be warm, professional, and courteous. Acknowledge the referrer's recommendation.
-Express enthusiasm to work with the new client and outline next steps.""",
+Be warm, professional, and courteous. Follow the specific instructions about who to address.
+If this is a first reply, thank the referrer and welcome the referred person.
+If this is a follow-up, address only the referred person directly.""",
 
             "Other": """You are a professional investment adviser responding to general inquiries.
 Be helpful and professional. If the question is outside your domain, politely suggest appropriate next steps.""",

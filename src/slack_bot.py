@@ -336,9 +336,21 @@ class SlackBot:
         success = False
         if self.gmail_client:
             recipients = json.loads(email.get("recipients_json") or "{}")
-            to_addr = recipients.get("reply_to") or email["sender"]
-            cc_addr = recipients.get("cc", "")
             in_reply_to = email.get("rfc_message_id", "")
+
+            # Referral-specific routing
+            if email.get("category") == "Referrals" and recipients.get("referred"):
+                referred_emails = ", ".join(r["email"] for r in recipients["referred"])
+                referrer_email = recipients.get("referrer_email", "")
+                is_first = not self.database.has_sent_reply_in_thread(email["thread_id"])
+
+                to_addr = referred_emails
+                cc_addr = ""
+                bcc_addr = referrer_email if is_first else ""
+            else:
+                to_addr = recipients.get("reply_to") or email["sender"]
+                cc_addr = recipients.get("cc", "")
+                bcc_addr = ""
 
             success = self.gmail_client.send_reply(
                 to=to_addr,
@@ -346,6 +358,7 @@ class SlackBot:
                 body=reply_text,
                 thread_id=email["thread_id"],
                 cc=cc_addr,
+                bcc=bcc_addr,
                 in_reply_to=in_reply_to,
             )
 

@@ -64,7 +64,7 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 email_db_id INTEGER UNIQUE NOT NULL,
                 channel_id TEXT NOT NULL,
-                thread_ts TEXT UNIQUE NOT NULL,
+                thread_ts TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(email_db_id) REFERENCES emails(id)
             )
@@ -206,6 +206,25 @@ class Database:
             )
             return cursor.fetchone() is not None
     
+    def has_sent_reply_in_thread(self, thread_id: str) -> bool:
+        """Check if any email in a Gmail thread has status='sent'."""
+        with self.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT 1 FROM emails WHERE thread_id = ? AND status = 'sent' LIMIT 1",
+                (thread_id,),
+            )
+            return cursor.fetchone() is not None
+
+    def update_recipients_json(self, email_id: int, recipients_json: str) -> None:
+        """Update the recipients JSON blob for an email."""
+        with self.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE emails SET recipients_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (recipients_json, email_id),
+            )
+
     # ============ SLACK THREADS ============
     
     def insert_slack_thread(
@@ -246,6 +265,20 @@ class Database:
             row = cursor.fetchone()
             return dict(row) if row else None
     
+    def get_slack_thread_for_gmail_thread(self, gmail_thread_id: str) -> Optional[Dict[str, Any]]:
+        """Get Slack thread for a Gmail thread ID (for conversation continuity)."""
+        with self.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            SELECT st.* FROM slack_threads st
+            JOIN emails e ON st.email_db_id = e.id
+            WHERE e.thread_id = ?
+            ORDER BY st.created_at ASC
+            LIMIT 1
+            """, (gmail_thread_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
     def get_slack_thread_for_email(self, email_id: int) -> Optional[Dict[str, Any]]:
         """Get slack thread for an email."""
         with self.get_db() as conn:

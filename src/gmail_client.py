@@ -234,6 +234,7 @@ class GmailClient:
         body: str,
         thread_id: str,
         cc: str = "",
+        bcc: str = "",
         in_reply_to: str = "",
     ) -> bool:
         """Send email reply in Gmail thread."""
@@ -243,6 +244,8 @@ class GmailClient:
             message["subject"] = f"Re: {subject}" if not subject.lower().startswith("re:") else subject
             if cc:
                 message["cc"] = cc
+            if bcc:
+                message["bcc"] = bcc
             if in_reply_to:
                 message["In-Reply-To"] = in_reply_to
                 message["References"] = in_reply_to

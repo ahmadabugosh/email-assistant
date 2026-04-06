@@ -45,11 +45,7 @@ class EmailAssistant:
             self.config.GOOGLE_TOKEN_PATH,
         )
         
-        self.sheets_client = SheetsClient(
-            self.config.GOOGLE_SHEET_ID,
-            self.config.GOOGLE_CREDENTIALS_PATH,
-            self.config.GOOGLE_TOKEN_PATH,
-        )
+        self.sheets_client = SheetsClient(self.config.GOOGLE_SHEET_ID)
         
         self.toolkit = ToolKit(
             self.config.TAVILY_API_KEY,
@@ -118,7 +114,19 @@ class EmailAssistant:
         self.database.update_email_category(email_db_id, category)
         logger.info(f"Recovered email {email_db_id} categorized as: {category}")
 
-        suggested_reply = self.email_processor.generate_reply(email, category, client_portfolio=client_portfolio)
+        # Extract referral metadata if applicable
+        referral_meta = None
+        if category == "Referrals":
+            referral_meta = self._build_referral_meta(email)
+            recipients = json.loads(db_email.get("recipients_json") or "{}")
+            recipients["referrer_email"] = referral_meta.get("referrer_email", "")
+            recipients["referrer_name"] = referral_meta.get("referrer_name", "")
+            recipients["referred"] = referral_meta.get("referred", [])
+            self.database.update_recipients_json(email_db_id, json.dumps(recipients))
+
+        suggested_reply = self.email_processor.generate_reply(
+            email, category, client_portfolio=client_portfolio, referral_meta=referral_meta,
+        )
         self.database.update_email_suggested_reply(email_db_id, suggested_reply)
 
         try:
@@ -248,17 +256,39 @@ class EmailAssistant:
         self.database.update_email_category(email_db_id, category)
         logger.info(f"Email {gmail_id} categorized as: {category}")
 
+        # Extract referral metadata if applicable
+        referral_meta = None
+        if category == "Referrals":
+            referral_meta = self._build_referral_meta(email)
+            # Enrich recipients_json with referral metadata and persist
+            recipients = json.loads(recipients)
+            recipients["referrer_email"] = referral_meta.get("referrer_email", "")
+            recipients["referrer_name"] = referral_meta.get("referrer_name", "")
+            recipients["referred"] = referral_meta.get("referred", [])
+            updated_json = json.dumps(recipients)
+            self.database.update_recipients_json(email_db_id, updated_json)
+
         # Generate reply (with client context if known)
-        suggested_reply = self.email_processor.generate_reply(email, category, client_portfolio=client_portfolio)
+        suggested_reply = self.email_processor.generate_reply(
+            email, category, client_portfolio=client_portfolio, referral_meta=referral_meta,
+        )
         self.database.update_email_suggested_reply(email_db_id, suggested_reply)
         logger.info(f"Generated reply for email {gmail_id}")
 
-        # Send to Slack
+        # Send to Slack — reuse existing thread if this Gmail thread already has one
+        existing_thread = self.database.get_slack_thread_for_gmail_thread(email["thread_id"])
         try:
-            thread_ts = self.slack_bot.send_email_notification(
-                email, category, suggested_reply, email_db_id
-            )
-            logger.info(f"Email {gmail_id} sent to Slack (thread: {thread_ts})")
+            if existing_thread:
+                thread_ts = self.slack_bot.send_followup_notification(
+                    email, category, suggested_reply, email_db_id,
+                    existing_thread_ts=existing_thread["thread_ts"],
+                )
+                logger.info(f"Email {gmail_id} posted as follow-up in thread: {thread_ts}")
+            else:
+                thread_ts = self.slack_bot.send_email_notification(
+                    email, category, suggested_reply, email_db_id
+                )
+                logger.info(f"Email {gmail_id} sent to Slack (thread: {thread_ts})")
         except Exception as e:
             logger.error(f"Failed to send to Slack: {e}")
             raise
@@ -292,6 +322,54 @@ class EmailAssistant:
             logger.error(f"Fatal error: {e}", exc_info=True)
             raise
     
+    def _build_referral_meta(self, email: dict) -> dict:
+        """Build referral metadata: identify referrer and referred person(s)."""
+        sender = email.get("sender", "")
+        referrer_email = self._extract_email_address(sender)
+        referrer_name = self._extract_name(sender)
+
+        # Collect all recipients from To and CC
+        all_recipients = []
+        for field in ("to", "cc"):
+            raw = email.get(field, "") or ""
+            # Split on commas, handling "Name <email>" format
+            for part in raw.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                addr = self._extract_email_address(part)
+                name = self._extract_name(part)
+                if addr:
+                    all_recipients.append({"email": addr, "name": name})
+
+        # Filter out our own email and the referrer
+        our_email = (self.user_email or "").lower()
+        referred = [
+            r for r in all_recipients
+            if r["email"].lower() != our_email
+            and r["email"].lower() != referrer_email.lower()
+        ]
+
+        is_first_reply = not self.database.has_sent_reply_in_thread(email.get("thread_id", ""))
+
+        return {
+            "referrer_email": referrer_email,
+            "referrer_name": referrer_name,
+            "referred": referred,
+            "is_first_reply": is_first_reply,
+        }
+
+    @staticmethod
+    def _extract_name(sender: str) -> str:
+        """Extract display name from a From header like 'John Smith <john@email.com>'."""
+        if "<" in sender:
+            name = sender.split("<")[0].strip().strip('"')
+            if name:
+                return name
+        # Fallback: use the part before @ in the email
+        match = re.search(r'([\w.+-]+)@', sender)
+        return match.group(1) if match else ""
+
     @staticmethod
     def _extract_email_address(sender: str) -> str:
         """Extract email address from a From header like 'John Smith <john@email.com>'."""
