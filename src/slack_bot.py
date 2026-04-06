@@ -41,7 +41,11 @@ class SlackBot:
         @self.app.action("send_email")
         def handle_send_email(ack, body, logger):
             ack()
-            self._on_send_email(body)
+            logger.info(">>> send_email action received")
+            try:
+                self._on_send_email(body)
+            except Exception as e:
+                logger.error(f"send_email action error: {e}", exc_info=True)
         
         @self.app.action("edit_email")
         def handle_edit_email(ack, body, logger):

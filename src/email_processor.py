@@ -89,10 +89,14 @@ Respond with ONLY the category name, nothing else."""
         context = ""
 
         if not is_known_client:
-            context = "\n\nIMPORTANT: This sender was NOT found in our client list. "
-            context += "In your reply, politely mention that you could not find them in our client records. "
-            context += "Ask if they could provide more details (such as their registered email) so you can verify their account. "
-            context += "Also mention that if they are not yet a client, they are welcome to book a call to discuss how we can help them."
+            context = (
+                "\n\nNOTE: This sender is NOT in our client list. However, do NOT automatically ask them to verify their identity."
+                "\n- If they are asking about a specific portfolio, account details, or other client-sensitive information, "
+                "THEN politely mention you couldn't find them in your records and ask for their registered email to verify."
+                "\n- If they are responding to an ongoing conversation (e.g. a referral thread), replying to a previous message, "
+                "or making a general inquiry, just reply naturally based on the context of the conversation."
+                "\n- If they are a new prospective client (e.g. from a referral), treat them warmly and help them with what they need."
+            )
 
         if category == "Portfolio Updates" and is_known_client:
             portfolio_context = self.toolkit.sheets_client.format_portfolio_context(client_portfolio)
@@ -127,14 +131,14 @@ Respond with ONLY the category name, nothing else."""
 
                 if is_first_reply:
                     context += (
-                        f"\n\nThis is a REFERRAL email. The referrer is {referrer_name}."
-                        f"\nThe referred person(s): {referred_names}."
-                        f"\nIMPORTANT instructions for this first reply:"
-                        f"\n- Thank {referrer_name} for the referral"
-                        f"\n- Let {referrer_name} know they are being moved to BCC so the conversation can continue directly with {referred_names}"
-                        f"\n- Address {referred_names} directly and express interest in learning about their investment needs and goals"
-                        f"\n- Suggest scheduling a call with {referred_names} to discuss how we can help with their specific financial situation"
-                        f"\n- Keep the tone warm and professional — do NOT just say 'welcome aboard' or similar generic phrases"
+                        f"\n\nThis is a REFERRAL email. The referrer is {referrer_name} (existing client)."
+                        f"\nThe referred person(s): {referred_names} (NEW prospective client)."
+                        f"\nIMPORTANT — structure the reply in this exact order:"
+                        f"\n1. Briefly thank {referrer_name} for the referral and let them know they are being moved to BCC"
+                        f"\n2. Then address {referred_names} directly for the rest of the email"
+                        f"\n3. Express interest in learning about {referred_names}'s investment needs and financial goals"
+                        f"\n4. Ask {referred_names} to schedule a call so you can discuss how you can help THEM"
+                        f"\nCRITICAL: The call invitation is for {referred_names}, NOT for {referrer_name}. {referrer_name} is an existing client — only {referred_names} needs onboarding."
                     )
                 else:
                     context += (
@@ -166,6 +170,7 @@ Body:
 {context if context else ""}
 
 Generate a professional, concise suggested reply. Keep it under 150 words.
+IMPORTANT: Do NOT include a subject line in the reply body (no "Subject: ..." text). Just write the reply content directly.
 Always end the reply with this exact signature:
 
 Best regards,
