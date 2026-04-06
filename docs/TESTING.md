@@ -14,8 +14,10 @@ tests/
 ├── conftest.py                 # Shared pytest fixtures
 ├── test_config.py              # Environment / config validation
 ├── test_database.py            # SQLite persistence layer
+├── test_email_processing.py    # Email context, referral metadata, signatures
 ├── test_email_processor.py     # LLM-based categorization and reply generation
 ├── test_gmail_client.py        # Gmail API wrapper
+├── test_referral_routing.py    # Referral BCC routing, DB thread tracking
 ├── test_slack_bot.py           # Slack bot handlers and notifications
 └── test_tools.py               # Agent toolkit (web search, portfolio lookup)
 ```
@@ -119,6 +121,23 @@ Tests `src/tools.py::ToolKit`. Covers:
 - `web_search` handling zero results and exceptions gracefully.
 - `lookup_portfolio` using a mocked `SheetsClient` for both hit and miss cases.
 - `extract_recipients` pulling email addresses out of a body and always including the original sender.
+
+### `test_email_processing.py`
+Tests email context generation, referral metadata extraction, and prompt safeguards. Uses a local `processor` fixture with mocked OpenAI. Covers:
+- **Referral context:** First-reply prompt includes BCC instructions, referrer thanks, and call invitation for the referred person. Follow-up prompt addresses only the referred person with no referrer mention.
+- **Investment advice context:** Known clients trigger a Tavily web search; non-clients receive a polite decline with call scheduling offer.
+- **Non-client handling:** Generic non-client context does *not* automatically ask for identity verification — only for client-sensitive requests.
+- **Portfolio updates:** Known client prompts include portfolio context from Google Sheets.
+- **Signature & formatting:** Every reply prompt includes the `Sarah James / Investment Adviser / HSBC` signature. Reply body must not contain a `Subject:` line.
+- **System prompts:** Investment Advice prompt says "you ARE the advisor" (no deferral). Referral prompt covers first reply vs follow-up.
+- **Self-sent filtering:** Emails from the authenticated user are detected and skipped.
+- **Referral metadata extraction:** `_build_referral_meta` correctly identifies referrer, single/multiple referred people, and first-reply vs follow-up status. `_extract_name` parses `Name <email>` and bare email formats.
+
+### `test_referral_routing.py`
+Tests the referral BCC routing pipeline end-to-end — from database state through Slack bot send action to Gmail API call. Uses `temp_db`, a `slack_bot` fixture with mocked Slack/Gmail, and a `gmail_client` fixture. Covers:
+- **Database thread tracking:** `has_sent_reply_in_thread` returns correct values for unsent, sent, and different-thread scenarios. `update_recipients_json` persists referral metadata. `get_latest_slack_thread` and `get_slack_thread_for_gmail_thread` resolve thread mappings. `email_exists_by_rfc_id` handles deduplication. Multiple emails can share a Slack `thread_ts` (non-unique constraint).
+- **Referral BCC routing (Slack bot):** First referral reply routes `to=referred, bcc=referrer, cc=""`. Follow-up replies drop the referrer entirely (`bcc=""`). Non-referral emails reply to sender (or `reply_to` when set) with CC preserved. Multiple referred people are all included in the `To` field.
+- **Gmail BCC support:** `send_reply` accepts and transmits the `bcc` parameter.
 
 ## Conventions and patterns
 

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1b2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    padding: 40px;
+    width: 1200px;
+  }
+  h1 { color: #64b5f6; font-size: 28px; margin-bottom: 8px; }
+  h1 span { color: #e0e0e0; font-weight: 400; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 28px; }
+
+  .stats {
+    display: flex; gap: 16px; margin-bottom: 28px;
+  }
+  .stat {
+    background: #232540;
+    border: 1px solid #3a3d5c;
+    border-radius: 8px;
+    padding: 14px 22px;
+    min-width: 110px;
+  }
+  .stat .num { font-size: 28px; font-weight: 700; color: #fff; }
+  .stat .label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .card {
+    background: #232540;
+    border-radius: 10px;
+    padding: 18px;
+    border-top: 3px solid;
+    position: relative;
+  }
+  .card .filename {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 4px;
+  }
+  .card .title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .card .badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .card ul {
+    list-style: none;
+    padding: 0;
+  }
+  .card li {
+    font-size: 12px;
+    color: #bbb;
+    padding: 2px 0;
+    padding-left: 14px;
+    position: relative;
+  }
+  .card li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: #888;
+  }
+
+  /* Card border colors */
+  .c-green { border-color: #4caf50; }
+  .c-green .badge { color: #4caf50; }
+  .c-orange { border-color: #ff9800; }
+  .c-orange .badge { color: #ff9800; }
+  .c-blue { border-color: #42a5f5; }
+  .c-blue .badge { color: #42a5f5; }
+  .c-red { border-color: #ef5350; }
+  .c-red .badge { color: #ef5350; }
+  .c-purple { border-color: #ab47bc; }
+  .c-purple .badge { color: #ab47bc; }
+  .c-cyan { border-color: #26c6da; }
+  .c-cyan .badge { color: #26c6da; }
+  .c-yellow { border-color: #ffca28; }
+  .c-yellow .badge { color: #ffca28; }
+  .c-pink { border-color: #ec407a; }
+  .c-pink .badge { color: #ec407a; }
+
+  .fixtures-bar {
+    background: #232540;
+    border: 1px solid #3a3d5c;
+    border-radius: 10px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .fixtures-bar .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #ff9800;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .fixtures-bar .chip {
+    background: #2d2f4a;
+    border: 1px solid #3a3d5c;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    color: #ccc;
+  }
+</style>
+</head>
+<body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <h1>Email Assistant <span>— Test Suite Overview</span></h1>
+    <div class="subtitle" style="text-align:right;margin-top:8px;">pytest · all externals mocked · runs on clean checkout</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="num">8</div><div class="label">Test Modules</div></div>
+    <div class="stat"><div class="num">81</div><div class="label">Test Cases</div></div>
+    <div class="stat"><div class="num">7</div><div class="label">Shared Fixtures</div></div>
+    <div class="stat"><div class="num">0</div><div class="label">Network Calls</div></div>
+  </div>
+
+  <!-- Row 1 -->
+  <div class="grid">
+    <div class="card c-green">
+      <div class="filename">test_config.py</div>
+      <div class="title">Config validation</div>
+      <div class="badge">4 tests</div>
+      <ul>
+        <li>Missing required key raises ValueError</li>
+        <li>All missing keys reported</li>
+        <li>Passes with full env + creds file</li>
+        <li>Fails on missing creds file</li>
+      </ul>
+    </div>
+    <div class="card c-orange">
+      <div class="filename">test_database.py</div>
+      <div class="title">SQLite persistence</div>
+      <div class="badge">10 tests</div>
+      <ul>
+        <li>Schema init (emails, threads, conv)</li>
+        <li>Idempotent email inserts</li>
+        <li>Pending email retrieval</li>
+        <li>Category &amp; reply updates</li>
+        <li>Slack thread mapping</li>
+        <li>Conversation history</li>
+        <li>Gmail historyId storage</li>
+      </ul>
+    </div>
+    <div class="card c-blue">
+      <div class="filename">test_email_processor.py</div>
+      <div class="title">LLM categorize &amp; draft</div>
+      <div class="badge">10 tests</div>
+      <ul>
+        <li>Categorize Portfolio / Advice / Referral</li>
+        <li>Fallback to "Other" on unknown label</li>
+        <li>Reply generation per category</li>
+        <li>refine_reply with user feedback</li>
+        <li>Client name extraction</li>
+        <li>System prompt per category</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="grid">
+    <div class="card c-red">
+      <div class="filename">test_gmail_client.py</div>
+      <div class="title">Gmail API wrapper</div>
+      <div class="badge">8 tests</div>
+      <ul>
+        <li>Extract body (multipart / simple)</li>
+        <li>Malformed base64 doesn't crash</li>
+        <li>Full sync with historyId</li>
+        <li>Extract To / Cc / Reply-To headers</li>
+        <li>send_reply with &amp; without CC</li>
+        <li>mark_as_read</li>
+      </ul>
+    </div>
+    <div class="card c-purple">
+      <div class="filename">test_slack_bot.py</div>
+      <div class="title">Slack bot handlers</div>
+      <div class="badge">9 tests</div>
+      <ul>
+        <li>_get_thread_ts_for_action resolution</li>
+        <li>Send uses DB thread_ts (not trigger_id)</li>
+        <li>Send invokes gmail_client.send_reply</li>
+        <li>Edit / Ignore post in correct thread</li>
+        <li>Thread msg triggers refine_reply</li>
+        <li>Conversation history passed through</li>
+        <li>Notification: summary + thread detail</li>
+      </ul>
+    </div>
+    <div class="card c-cyan">
+      <div class="filename">test_tools.py</div>
+      <div class="title">Agent toolkit</div>
+      <div class="badge">8 tests</div>
+      <ul>
+        <li>web_search unconfigured message</li>
+        <li>web_search returns formatted results</li>
+        <li>web_search: no results / error paths</li>
+        <li>lookup_portfolio hit &amp; miss</li>
+        <li>extract_recipients from body</li>
+        <li>Sender always included in recipients</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Row 3 - NEW modules -->
+  <div class="grid" style="grid-template-columns: 1fr 1fr;">
+    <div class="card c-yellow">
+      <div class="filename">test_email_processing.py</div>
+      <div class="title">Email processing &amp; context</div>
+      <div class="badge">16 tests</div>
+      <ul>
+        <li>Referral first-reply: BCC, referrer thanks, call for referred</li>
+        <li>Referral follow-up: only addressed to referred</li>
+        <li>Investment advice: known client triggers web search</li>
+        <li>Investment advice: non-client gets polite decline</li>
+        <li>Non-client: no automatic identity verification</li>
+        <li>Portfolio updates include client context</li>
+        <li>Signature (Sarah James / HSBC) in all replies</li>
+        <li>No "Subject:" line in reply body</li>
+        <li>Self-sent email filtering</li>
+        <li>Referral metadata extraction (single &amp; multiple referred)</li>
+      </ul>
+    </div>
+    <div class="card c-pink">
+      <div class="filename">test_referral_routing.py</div>
+      <div class="title">Referral BCC routing</div>
+      <div class="badge">16 tests</div>
+      <ul>
+        <li>has_sent_reply_in_thread (true / false / other thread)</li>
+        <li>update_recipients_json persistence</li>
+        <li>Slack thread lookup &amp; Gmail thread mapping</li>
+        <li>RFC Message-ID dedup</li>
+        <li>Non-unique Slack thread_ts constraint</li>
+        <li>First reply: to=referred, bcc=referrer, cc=empty</li>
+        <li>Follow-up: referrer fully dropped</li>
+        <li>Non-referral: reply-to override, CC preserved</li>
+        <li>Multiple referred people in To field</li>
+        <li>Gmail send_reply with BCC parameter</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="fixtures-bar">
+    <div class="label">Shared Fixtures<br>conftest.py</div>
+    <div class="chip">temp_db</div>
+    <div class="chip">mock_toolkit</div>
+    <div class="chip">email_processor</div>
+    <div class="chip">sample_email</div>
+    <div class="chip">sample_portfolio_email</div>
+    <div class="chip">sample_investment_email</div>
+    <div class="chip">sample_referral_email</div>
+  </div>
+</body>
+</html>
