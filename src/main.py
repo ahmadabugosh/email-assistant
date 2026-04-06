@@ -157,10 +157,11 @@ class EmailAssistant:
 
         while self.running:
             try:
+                logger.info("Polling for new emails...")
                 await self._process_batch()
             except Exception as e:
                 logger.error(f"Error in email processing loop: {e}", exc_info=True)
-            
+
             # Wait before next poll
             await asyncio.sleep(self.config.POLL_INTERVAL)
     
@@ -169,11 +170,16 @@ class EmailAssistant:
         last_history_id = self.database.get_last_history_id()
 
         if last_history_id is None:
-            # First run: just save current history ID, process only new emails going forward
-            logger.info("First run — saving current history ID (processing new emails only)")
+            # First run: save current history ID AND process unread emails
+            logger.info("First run — fetching unread emails and saving history ID")
             new_history_id = self.gmail_client.get_current_history_id()
             self.database.update_history_id(new_history_id)
-            return
+            # Also fetch recent unread emails so we don't miss anything
+            emails, _ = self.gmail_client.get_new_emails(max_results=20)
+            if not emails:
+                logger.info("No unread emails on first run")
+                return
+            logger.info(f"First run: found {len(emails)} inbox emails to process")
         else:
             try:
                 # Incremental sync via History API
@@ -192,7 +198,7 @@ class EmailAssistant:
                     raise
 
         if not emails:
-            logger.debug("No new emails")
+            logger.info("No new emails")
             return
 
         logger.info(f"Processing {len(emails)} new emails")

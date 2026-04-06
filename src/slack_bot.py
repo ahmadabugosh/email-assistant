@@ -323,18 +323,21 @@ class SlackBot:
     def _on_send_email(self, body: Dict[str, Any]) -> None:
         """Handle send email action."""
         email_db_id, thread_ts = self._get_thread_ts_for_action(body)
+        logger.info(f"Send action: email_db_id={email_db_id}, thread_ts={thread_ts}")
 
         email = self.database.get_email(email_db_id)
         if not email:
             logger.error(f"Email {email_db_id} not found")
             return
 
+        logger.info(f"Send action: category={email.get('category')}, subject={email.get('subject')}")
         reply_text = email["suggested_reply"]
 
         # Send the email via Gmail
         success = False
         if self.gmail_client:
             recipients = json.loads(email.get("recipients_json") or "{}")
+            logger.info(f"Send action: recipients={recipients}")
             in_reply_to = email.get("rfc_message_id", "")
 
             # Referral-specific routing — check BEFORE marking as sent

@@ -130,10 +130,11 @@ Respond with ONLY the category name, nothing else."""
                         f"\n\nThis is a REFERRAL email. The referrer is {referrer_name}."
                         f"\nThe referred person(s): {referred_names}."
                         f"\nIMPORTANT instructions for this first reply:"
-                        f"\n- Thank {referrer_name} for the referral and mention they are being moved to BCC"
-                        f"\n- Welcome {referred_names} warmly"
-                        f"\n- Suggest {referred_names} schedule a call to discuss how we can help"
-                        f"\n- Address BOTH the referrer and the referred person(s)"
+                        f"\n- Thank {referrer_name} for the referral"
+                        f"\n- Let {referrer_name} know they are being moved to BCC so the conversation can continue directly with {referred_names}"
+                        f"\n- Address {referred_names} directly and express interest in learning about their investment needs and goals"
+                        f"\n- Suggest scheduling a call with {referred_names} to discuss how we can help with their specific financial situation"
+                        f"\n- Keep the tone warm and professional — do NOT just say 'welcome aboard' or similar generic phrases"
                     )
                 else:
                     context += (
