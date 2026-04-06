@@ -266,13 +266,14 @@ class Database:
         thread_ts: str,
         detail_message_ts: str = "",
     ) -> int:
-        """Insert slack thread mapping."""
+        """Insert slack thread mapping (idempotent)."""
         with self.get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-            INSERT INTO slack_threads (email_db_id, channel_id, thread_ts, detail_message_ts)
+            INSERT OR IGNORE INTO slack_threads (email_db_id, channel_id, thread_ts, detail_message_ts)
             VALUES (?, ?, ?, ?)
             """, (email_db_id, channel_id, thread_ts, detail_message_ts))
+            logger.info(f"insert_slack_thread: email_db_id={email_db_id}, thread_ts={thread_ts}")
             return cursor.lastrowid
     
     def update_detail_message_ts(self, email_db_id: int, detail_message_ts: str) -> None:
@@ -301,6 +302,25 @@ class Database:
         """Get Slack thread for a Gmail thread ID (for conversation continuity)."""
         with self.get_db() as conn:
             cursor = conn.cursor()
+            # Debug: how many emails share this thread_id?
+            cursor.execute(
+                "SELECT id, gmail_id FROM emails WHERE thread_id = ?",
+                (gmail_thread_id,),
+            )
+            email_rows = cursor.fetchall()
+            email_ids = [dict(r)["id"] for r in email_rows]
+            logger.info(f"Emails with thread_id={gmail_thread_id}: email_ids={email_ids}")
+
+            # Debug: which of those have slack_thread mappings?
+            if email_ids:
+                placeholders = ",".join("?" * len(email_ids))
+                cursor.execute(
+                    f"SELECT email_db_id, thread_ts FROM slack_threads WHERE email_db_id IN ({placeholders})",
+                    email_ids,
+                )
+                st_rows = [dict(r) for r in cursor.fetchall()]
+                logger.info(f"slack_threads for those emails: {st_rows}")
+
             cursor.execute("""
             SELECT st.* FROM slack_threads st
             JOIN emails e ON st.email_db_id = e.id
@@ -309,6 +329,10 @@ class Database:
             LIMIT 1
             """, (gmail_thread_id,))
             row = cursor.fetchone()
+            if row:
+                logger.info(f"Found existing Slack thread: {dict(row)}")
+            else:
+                logger.info(f"No Slack thread found for gmail thread {gmail_thread_id}")
             return dict(row) if row else None
 
     def get_slack_thread_for_email(self, email_id: int) -> Optional[Dict[str, Any]]:

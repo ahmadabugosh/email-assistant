@@ -38,6 +38,7 @@ class EmailAssistant:
         # Initialize components
         logger.info("Initializing email assistant...")
         
+        logger.info(f"Database path: {self.config.DB_PATH}")
         self.database = Database(self.config.DB_PATH)
         
         self.gmail_client = GmailClient(
@@ -129,10 +130,18 @@ class EmailAssistant:
         )
         self.database.update_email_suggested_reply(email_db_id, suggested_reply)
 
+        # Reuse existing Slack thread if one exists for this Gmail thread
+        existing_thread = self.database.get_slack_thread_for_gmail_thread(email["thread_id"])
         try:
-            self.slack_bot.send_email_notification(
-                email, category, suggested_reply, email_db_id
-            )
+            if existing_thread:
+                self.slack_bot.send_followup_notification(
+                    email, category, suggested_reply, email_db_id,
+                    existing_thread_ts=existing_thread["thread_ts"],
+                )
+            else:
+                self.slack_bot.send_email_notification(
+                    email, category, suggested_reply, email_db_id
+                )
         except Exception as e:
             logger.error(f"Failed to send recovered email to Slack: {e}")
             raise
@@ -276,6 +285,7 @@ class EmailAssistant:
         logger.info(f"Generated reply for email {gmail_id}")
 
         # Send to Slack — reuse existing thread if this Gmail thread already has one
+        logger.info(f"Thread lookup for gmail thread_id={email['thread_id']}, email_db_id={email_db_id}")
         existing_thread = self.database.get_slack_thread_for_gmail_thread(email["thread_id"])
         try:
             if existing_thread:
