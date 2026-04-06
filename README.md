@@ -293,6 +293,10 @@ Error: oauth2: "invalid_grant" "Token has been expired or revoked"
 
 ## Production Improvements
 
+- [ ] Store portfolio data in a database instead of Google Sheets for better scalability and data integrity
+- [ ] Create a frontend setup wizard for onboarding (skeleton is already in place)
+- [ ] Integrate with a meeting booking app (e.g. Calendly) so referral call invitations include a direct scheduling link
+- [ ] Make LLM replies more tailored to the adviser's tone of voice and investment style (e.g. fine-tuning or few-shot examples from past emails)
 - [ ] Gmail Push Notifications (Pub/Sub) instead of polling
 - [ ] PostgreSQL instead of SQLite
 - [ ] Message queue (Celery/Redis) for async processing
