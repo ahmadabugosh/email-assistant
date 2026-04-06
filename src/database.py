@@ -1,10 +1,13 @@
 """Database models and queries for email assistant."""
+import logging
 import sqlite3
 import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -101,9 +104,38 @@ class Database:
                 except sqlite3.OperationalError:
                     pass  # Column already exists
 
+            # Migration: drop UNIQUE constraint on slack_threads.thread_ts
+            # (CREATE TABLE IF NOT EXISTS won't alter an existing table's schema)
+            try:
+                cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='slack_threads'")
+                row = cursor.fetchone()
+                if row and "UNIQUE" in (row[0] or "").upper() and "thread_ts" in (row[0] or "").lower():
+                    cursor.execute("""
+                    CREATE TABLE slack_threads_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        email_db_id INTEGER UNIQUE NOT NULL,
+                        channel_id TEXT NOT NULL,
+                        thread_ts TEXT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        detail_message_ts TEXT DEFAULT '',
+                        FOREIGN KEY(email_db_id) REFERENCES emails(id)
+                    )
+                    """)
+                    cursor.execute("""
+                    INSERT INTO slack_threads_new (id, email_db_id, channel_id, thread_ts, created_at, detail_message_ts)
+                    SELECT id, email_db_id, channel_id, thread_ts, created_at, detail_message_ts
+                    FROM slack_threads
+                    """)
+                    cursor.execute("DROP TABLE slack_threads")
+                    cursor.execute("ALTER TABLE slack_threads_new RENAME TO slack_threads")
+                    logger.info("Migrated slack_threads: removed UNIQUE constraint on thread_ts")
+            except sqlite3.OperationalError as e:
+                logger.warning(f"slack_threads migration check: {e}")
+
             # Indexes for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_gmail_id ON emails(gmail_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_status ON emails(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_thread_id ON emails(thread_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_slack_thread ON slack_threads(thread_ts)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversation_thread ON conversations(slack_thread_ts)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_email_rfc_message_id ON emails(rfc_message_id)")

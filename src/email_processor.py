@@ -99,10 +99,21 @@ Respond with ONLY the category name, nothing else."""
             context += f"\n\nClient Portfolio Information:\n{portfolio_context}"
 
         elif category == "Investment Advice":
-            query = self._extract_investment_query(body)
-            if query:
-                search_results = self.toolkit.web_search(query)
-                context += f"\n\nRelevant Research:\n{search_results}"
+            if is_known_client:
+                query = self._extract_investment_query(body)
+                if query:
+                    search_results = self.toolkit.web_search(query)
+                    context += f"\n\nRelevant Research:\n{search_results}"
+            else:
+                # Override the generic non-client message with an Investment Advice-specific decline
+                context = (
+                    "\n\nIMPORTANT: This sender is NOT a client. We do not offer investment advice to non-clients."
+                    "\nIn your reply:"
+                    "\n- Politely explain that investment advice is only available to existing clients"
+                    "\n- Express interest in learning more about them — ask them to share a little about their portfolio size"
+                    "\n- Offer to schedule a call to discuss whether they would be a good fit as a client"
+                    "\n- Keep the tone warm and inviting, not dismissive"
+                )
 
         elif category == "Referrals":
             if referral_meta:

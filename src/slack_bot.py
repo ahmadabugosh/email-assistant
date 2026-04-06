@@ -330,7 +330,6 @@ class SlackBot:
             return
 
         reply_text = email["suggested_reply"]
-        self.database.update_email_final_reply(email_db_id, reply_text)
 
         # Send the email via Gmail
         success = False
@@ -338,7 +337,7 @@ class SlackBot:
             recipients = json.loads(email.get("recipients_json") or "{}")
             in_reply_to = email.get("rfc_message_id", "")
 
-            # Referral-specific routing
+            # Referral-specific routing — check BEFORE marking as sent
             if email.get("category") == "Referrals" and recipients.get("referred"):
                 referred_emails = ", ".join(r["email"] for r in recipients["referred"])
                 referrer_email = recipients.get("referrer_email", "")
@@ -347,6 +346,10 @@ class SlackBot:
                 to_addr = referred_emails
                 cc_addr = ""
                 bcc_addr = referrer_email if is_first else ""
+                logger.info(
+                    f"Referral routing for email {email_db_id}: "
+                    f"to={to_addr}, bcc={bcc_addr}, is_first={is_first}"
+                )
             else:
                 to_addr = recipients.get("reply_to") or email["sender"]
                 cc_addr = recipients.get("cc", "")
@@ -361,6 +364,9 @@ class SlackBot:
                 bcc=bcc_addr,
                 in_reply_to=in_reply_to,
             )
+
+        # Mark as sent AFTER routing decision and send
+        self.database.update_email_final_reply(email_db_id, reply_text)
 
         logger.info(f"Email {email_db_id}: {'sent' if success else 'failed'}")
 

@@ -30,8 +30,11 @@ class Config:
     # Polling
     POLL_INTERVAL: int = int(os.getenv("POLL_INTERVAL", "30"))
     
-    # Database
-    DB_PATH: str = os.getenv("DB_PATH", "email_assistant.db")
+    # Database — use DATA_DIR volume if available (Railway), else local
+    DB_PATH: str = os.getenv(
+        "DB_PATH",
+        os.path.join(os.getenv("DATA_DIR", "."), "email_assistant.db"),
+    )
     
     @classmethod
     def validate(cls) -> bool:

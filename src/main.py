@@ -352,6 +352,13 @@ class EmailAssistant:
 
         is_first_reply = not self.database.has_sent_reply_in_thread(email.get("thread_id", ""))
 
+        logger.info(
+            f"Referral meta: referrer={referrer_email} ({referrer_name}), "
+            f"referred={[r['email'] for r in referred]}, "
+            f"all_recipients={[r['email'] for r in all_recipients]}, "
+            f"our_email={our_email}, is_first={is_first_reply}"
+        )
+
         return {
             "referrer_email": referrer_email,
             "referrer_name": referrer_name,
