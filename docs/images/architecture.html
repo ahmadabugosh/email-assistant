@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1b2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    padding: 40px;
+    width: 1200px;
+  }
+  h1 { color: #64b5f6; font-size: 28px; margin-bottom: 4px; }
+  h1 span { color: #e0e0e0; font-weight: 400; }
+  .subtitle { color: #888; font-size: 13px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+
+  .box {
+    border-radius: 10px;
+    padding: 16px 20px;
+    position: relative;
+  }
+  .box .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .box .title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .box .desc {
+    font-size: 12px;
+    color: #aaa;
+    line-height: 1.5;
+  }
+
+  /* Layout */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 200px 380px 200px;
+    gap: 40px;
+    align-items: start;
+  }
+
+  /* Left column */
+  .left { display: flex; flex-direction: column; gap: 24px; }
+
+  /* Center app */
+  .app-box {
+    background: #232540;
+    border: 2px solid #3a3d5c;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .app-box .app-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #64b5f6;
+    margin-bottom: 2px;
+  }
+  .app-box .app-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 16px;
+    font-family: 'Consolas', monospace;
+  }
+  .module-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .module {
+    background: #2d2f4a;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .module .name {
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+  .module .info {
+    font-size: 10px;
+    color: #999;
+  }
+
+  /* Right column */
+  .right { display: flex; flex-direction: column; gap: 20px; }
+
+  /* Colors */
+  .c-red { background: rgba(239,83,80,0.12); border: 1px solid #ef5350; }
+  .c-red .label { color: #ef5350; }
+  .c-pink { background: rgba(236,64,122,0.12); border: 1px solid #ec407a; }
+  .c-pink .label { color: #ec407a; }
+  .c-blue { background: rgba(66,165,245,0.12); border: 1px solid #42a5f5; }
+  .c-blue .label { color: #42a5f5; }
+  .c-green { background: rgba(76,175,80,0.12); border: 1px solid #4caf50; }
+  .c-green .label { color: #4caf50; }
+  .c-purple { background: rgba(171,71,188,0.12); border: 1px solid #ab47bc; }
+  .c-purple .label { color: #ab47bc; }
+  .c-cyan { background: rgba(38,198,218,0.12); border: 1px solid #26c6da; }
+  .c-cyan .label { color: #26c6da; }
+  .c-orange { background: rgba(255,152,0,0.12); border: 1px solid #ff9800; }
+  .c-orange .label { color: #ff9800; }
+
+  /* Arrows */
+  .arrow-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 20px;
+  }
+  .arrow-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: #888;
+  }
+  .arrow-line {
+    width: 30px;
+    height: 2px;
+    border-radius: 1px;
+  }
+  .arrow-line.dashed {
+    background: repeating-linear-gradient(90deg, currentColor 0px, currentColor 4px, transparent 4px, transparent 8px);
+    height: 2px;
+  }
+
+  /* Flow labels */
+  .flow {
+    position: absolute;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Email Assistant <span>— System Architecture</span></h1>
+    <div class="subtitle">Gmail → LLM categorize &amp; draft → Slack review → Send via Gmail</div>
+  </div>
+
+  <div class="main-grid">
+    <!-- LEFT COLUMN -->
+    <div class="left">
+      <div class="box c-red">
+        <div class="label">Email Source</div>
+        <div class="title">Gmail API</div>
+        <div class="desc">History API polling · OAuth2 · threaded send with In-Reply-To / References</div>
+      </div>
+
+      <div class="box c-blue">
+        <div class="label">Human</div>
+        <div class="title">Advisor (User)</div>
+        <div class="desc">Reviews drafts · clicks Send / Edit / Ignore · iterates via thread replies</div>
+      </div>
+
+      <div class="box c-pink">
+        <div class="label">Review UI</div>
+        <div class="title">Slack (Socket Mode)</div>
+        <div class="desc">Channel summary + threaded detail · action buttons · multi-turn refinement</div>
+      </div>
+    </div>
+
+    <!-- CENTER: CORE APPLICATION -->
+    <div>
+      <div class="app-box">
+        <div class="app-label">Core Application</div>
+        <div class="app-title">email_assistant (Python)</div>
+        <div class="module-grid">
+          <div class="module">
+            <div class="name">main.py</div>
+            <div class="info">poll loop · referral meta · first-run scan</div>
+          </div>
+          <div class="module">
+            <div class="name">gmail_client</div>
+            <div class="info">fetch · send · BCC</div>
+          </div>
+          <div class="module">
+            <div class="name">email_processor</div>
+            <div class="info">LLM categorize · draft · refine · signature</div>
+          </div>
+          <div class="module">
+            <div class="name">slack_bot</div>
+            <div class="info">notify · handlers · BCC routing</div>
+          </div>
+          <div class="module">
+            <div class="name">tools</div>
+            <div class="info">search · portfolio · recipients</div>
+          </div>
+          <div class="module">
+            <div class="name">database</div>
+            <div class="info">SQLite state · thread tracking</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Flow annotations below center box -->
+      <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+          <span style="color: #ef5350;">●</span><span style="color: #888;">1 · fetch new</span>
+          <span style="margin-left: 12px; color: #4caf50;">●</span><span style="color: #888;">2 · categorize + draft</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+          <span style="color: #ec407a;">●</span><span style="color: #888;">3 · notify + draft</span>
+          <span style="margin-left: 12px; color: #42a5f5;">●</span><span style="color: #888;">5 · Send / Edit / Ignore</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+          <span style="color: #ef5350;">●</span><span style="color: #888;">6 · send reply (To/BCC routing)</span>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="arrow-section" style="margin-top: 20px;">
+        <div class="arrow-row">
+          <div class="arrow-line" style="background:#ef5350;"></div><span>Gmail I/O</span>
+          <div class="arrow-line" style="background:#ec407a;"></div><span>Slack I/O</span>
+          <div class="arrow-line" style="background:#4caf50;"></div><span>LLM</span>
+        </div>
+        <div class="arrow-row">
+          <div class="arrow-line" style="background:#26c6da;"></div><span>Sheets (public CSV)</span>
+          <div class="arrow-line" style="background:#ab47bc;"></div><span>Web Search</span>
+          <div class="arrow-line" style="background:#ff9800;"></div><span>SQLite</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right">
+      <div class="box c-green">
+        <div class="label">LLM</div>
+        <div class="title">OpenAI gpt-4o-mini</div>
+        <div class="desc">Categorize · draft · refine with conversation history · signature enforcement</div>
+      </div>
+
+      <div class="box c-cyan">
+        <div class="label">Portfolio Context</div>
+        <div class="title">Google Sheets</div>
+        <div class="desc">Public CSV export — no API auth needed. Client holdings lookup for Portfolio Updates</div>
+      </div>
+
+      <div class="box c-purple">
+        <div class="label">Market Context</div>
+        <div class="title">Tavily Search</div>
+        <div class="desc">Live web search for Investment Advice category (known clients only)</div>
+      </div>
+
+      <div class="box c-orange">
+        <div class="label">Persistence</div>
+        <div class="title">SQLite Database</div>
+        <div class="desc">emails · slack_threads · conversations · gmail_state · referral metadata</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

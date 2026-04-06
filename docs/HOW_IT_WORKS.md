@@ -9,6 +9,7 @@ A detailed look at how the Email Assistant works behind the scenes — from Gmai
 - [Lifecycle of an Email](#lifecycle-of-an-email)
 - [Gmail Integration & Reliability](#gmail-integration--reliability)
 - [Email Categorization & Reply Generation](#email-categorization--reply-generation)
+- [Referral Workflow & BCC Routing](#referral-workflow--bcc-routing)
 - [Slack Interaction Flow](#slack-interaction-flow)
 - [Sending Replies](#sending-replies)
 - [Database & State Management](#database--state-management)
@@ -28,10 +29,10 @@ Here's what happens end-to-end when a new email arrives:
 5. Stored in SQLite database
 6. LLM categorizes it (Portfolio Updates / Investment Advice / Referrals / Other)
 7. Context is gathered based on category:
-   - Portfolio Updates → Google Sheets portfolio lookup
-   - Investment Advice → Tavily web search for market data
-   - Referrals → To/CC recipient extraction
-8. LLM generates a suggested reply using the context
+   - Portfolio Updates → Google Sheets portfolio lookup (public CSV export, no auth)
+   - Investment Advice → Tavily web search for market data (known clients only)
+   - Referrals → referrer/referred extraction from To/CC, BCC routing metadata
+8. LLM generates a suggested reply using the context and category-specific system prompt
 9. Slack receives:
    - Channel message: compact summary (sender, date, subject, category)
    - Thread reply: full email body + suggested reply + action buttons
@@ -57,13 +58,12 @@ The Gmail History API solves this. It tracks **all changes** to the mailbox, not
 
 ### First Run Behavior
 
-On the very first run, the assistant does **not** fetch your entire inbox history. Instead, it:
+On the very first run, the assistant needs to establish a baseline for the History API **without** flooding Slack with your entire inbox. It:
 
 1. Calls `users().getProfile()` to get the current `historyId`
-2. Saves it to the database as the starting point
-3. From this point forward, only processes new emails
-
-This avoids flooding Slack with hundreds of old emails on first startup.
+2. Saves it to the database as the starting point for future incremental syncs
+3. Fetches up to 20 recent unread inbox emails and processes them — this ensures emails that arrived just before startup aren't missed
+4. From this point forward, only new emails (detected via History API) are processed
 
 ### Never Missing an Email
 
@@ -106,23 +106,31 @@ Each email is categorized by sending it to OpenAI's `gpt-4o-mini` with a zero-te
 
 If the model returns an unexpected value, it defaults to "Other".
 
+### Client Detection
+
+Before categorization, the assistant looks up the sender's email address in the Google Sheet (fetched as a public CSV — no Google Sheets API or Google Cloud auth required). If a match is found, the sender is treated as a **known client** and their portfolio data is available for context. This affects how replies are generated across all categories.
+
 ### Context Gathering
 
-Before generating a reply, the assistant gathers relevant context based on the category:
+Before generating a reply, the assistant gathers relevant context based on the category and client status:
 
-- **Portfolio Updates**: Extracts the client name from the sender, looks up their portfolio in the connected Google Sheet (value, holdings, risk profile)
-- **Investment Advice**: Extracts investment keywords from the email body and runs a Tavily web search for current market data and research
-- **Referrals**: Extracts all recipients (To, CC) so the reply can acknowledge the referrer and address new clients
+- **Portfolio Updates** (known client): Looks up their portfolio in the Google Sheet (holdings, net worth, expected earnings, beneficiary info) and includes it in the LLM prompt
+- **Investment Advice** (known client): Extracts investment keywords from the email body and runs a Tavily web search for current market data. The assistant responds as the client's financial advisor with direct, research-backed guidance
+- **Investment Advice** (non-client): Does **not** run a web search. Instead, politely explains that advice is only for existing clients, asks about their portfolio size, and offers to schedule a call to discuss becoming a client
+- **Referrals**: Identifies the referrer (sender) and referred person(s) (everyone in To/CC except the sender and the assistant's own email). Builds referral metadata that controls both the LLM prompt and the recipient routing at send time
+- **Non-client, general**: The reply is generated naturally without automatically asking the sender to verify their identity — verification is only prompted when the sender asks about client-sensitive information (account details, specific portfolio data)
 
 ### Reply Generation
 
 The reply is generated with a category-specific system prompt that sets the tone:
-- Portfolio Updates: formal, acknowledges information, offers insights
-- Investment Advice: conservative, data-driven, mentions risks
-- Referrals: warm, acknowledges referrer, outlines next steps
-- Other: helpful and professional
+- **Portfolio Updates**: formal, acknowledges information, offers insights
+- **Investment Advice**: "You ARE the client's financial advisor" — gives direct, actionable advice with risk caveats. Does **not** tell the client to "consult a financial advisor" since that's the assistant's role
+- **Referrals**: warm, follows specific first-reply vs follow-up instructions (see [Referral Workflow](#referral-workflow--bcc-routing))
+- **Other**: helpful and professional
 
-The model receives the full email content, any gathered context, and generates a reply under 150 words.
+The model receives the full email content, any gathered context, and generates a reply under 150 words. Every reply:
+- Ends with a consistent signature: **Sarah James, Investment Adviser, HSBC**
+- Does **not** include a `Subject:` line in the body (the LLM is explicitly instructed to omit it)
 
 ### Reply Refinement
 
@@ -134,6 +142,54 @@ User: "Make it more formal"
 User: "Add a mention of the Q1 report"
 → Assistant adds Q1 reference while keeping the formal tone
 ```
+
+---
+
+## Referral Workflow & BCC Routing
+
+Referral emails require special handling — the referrer (existing client) introduces a new person, and the reply needs to address both parties differently depending on where we are in the conversation.
+
+### Metadata Extraction
+
+When an email is categorized as "Referrals", the assistant builds referral metadata:
+
+1. **Referrer** = the email sender (existing client who made the introduction)
+2. **Referred person(s)** = everyone in To/CC except the referrer and the assistant's own email
+3. **Is first reply?** = checks `has_sent_reply_in_thread()` in the database — `True` if no reply has been sent in this Gmail thread yet
+
+This metadata is persisted in `recipients_json` so it's available at send time.
+
+### First Reply (New Referral Thread)
+
+When the user clicks Send on the first reply in a referral thread:
+
+```
+To:  referred person(s)     ← the new prospective client(s)
+BCC: referrer               ← existing client, kept informed but removed from thread
+CC:  (empty)
+```
+
+The LLM reply is structured in this order:
+1. Briefly thank the referrer for the introduction and mention they're being moved to BCC
+2. Address the referred person(s) directly
+3. Express interest in learning about their investment needs
+4. Invite **them** (not the referrer) to schedule a call
+
+### Follow-Up Replies (Same Thread)
+
+Once the first reply has been sent, any subsequent replies in the same thread:
+
+```
+To:  referred person(s)
+BCC: (empty)                ← referrer fully dropped
+CC:  (empty)
+```
+
+The LLM prompt instructs to address only the referred person — no mention of the referrer or BCC.
+
+### Non-Referral Emails
+
+Standard emails reply to the original sender (or `Reply-To` if present) with the original CC preserved and BCC empty.
 
 ---
 
@@ -177,12 +233,17 @@ When you click "Send", the reply is sent as a **threaded reply** to the original
 
 These headers tell the recipient's email client that this is a reply to a specific message, so it appears in the same conversation thread.
 
-### CC Support for Referrals
+### Recipient Routing
 
-Referral emails often have multiple recipients. When replying:
-- The `To` field is set to the original sender (or `Reply-To` if present)
-- The `CC` field preserves the original CC recipients
-- The LLM is aware of all recipients and tailors the reply accordingly
+The `_on_send_email` handler in the Slack bot determines recipients based on the email category and `recipients_json`:
+
+| Category | To | CC | BCC |
+|----------|----|----|-----|
+| **Referrals (first reply)** | Referred person(s) | Empty | Referrer |
+| **Referrals (follow-up)** | Referred person(s) | Empty | Empty |
+| **Other categories** | Sender (or Reply-To) | Original CC | Empty |
+
+The Gmail client's `send_reply()` method accepts `to`, `cc`, and `bcc` parameters and sets the appropriate MIME headers.
 
 ---
 

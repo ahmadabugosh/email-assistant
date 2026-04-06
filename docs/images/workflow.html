@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1b2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    padding: 40px;
+    width: 1200px;
+  }
+  h1 { color: #64b5f6; font-size: 28px; margin-bottom: 4px; }
+  h1 span { color: #e0e0e0; font-weight: 400; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+  .subtitle { color: #888; font-size: 13px; margin-top: 8px; }
+
+  .lane {
+    margin-bottom: 28px;
+  }
+  .lane-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .lane-label.red { color: #ef5350; }
+  .lane-label.green { color: #4caf50; }
+  .lane-label.pink { color: #ec407a; }
+  .lane-label.blue { color: #42a5f5; }
+  .lane-label.yellow { color: #ffca28; }
+
+  .steps {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .step {
+    background: #232540;
+    border-radius: 10px;
+    padding: 14px 16px;
+    flex: 1;
+    position: relative;
+    min-width: 0;
+  }
+  .step .num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .step .name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .step .info {
+    font-size: 11px;
+    color: #999;
+    line-height: 1.4;
+  }
+  .step .info code {
+    font-family: 'Consolas', monospace;
+    font-size: 10px;
+    background: #2d2f4a;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #ccc;
+  }
+
+  /* Arrow between steps */
+  .arrow {
+    display: flex;
+    align-items: center;
+    color: #555;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  /* Num colors */
+  .num-red { background: #ef5350; }
+  .num-green { background: #4caf50; }
+  .num-orange { background: #ff9800; }
+  .num-blue { background: #42a5f5; }
+  .num-pink { background: #ec407a; }
+  .num-purple { background: #ab47bc; }
+  .num-yellow { background: #f9a825; }
+  .num-cyan { background: #26c6da; }
+
+  /* Highlight box */
+  .highlight {
+    background: #2a2c48;
+    border: 1px solid #3a3d5c;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 11px;
+    color: #bbb;
+    line-height: 1.6;
+    flex: 2;
+  }
+  .highlight strong { color: #fff; }
+
+  /* Branch detail */
+  .branch-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .branch-item {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+  .b-portfolio { background: rgba(38,198,218,0.2); color: #26c6da; }
+  .b-advice { background: rgba(171,71,188,0.2); color: #ab47bc; }
+  .b-referral { background: rgba(255,202,40,0.2); color: #ffca28; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid #2d2f4a;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #888;
+  }
+  .legend-dot {
+    width: 10px;
+    height: 3px;
+    border-radius: 1px;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Email Assistant <span>— End-to-End Workflow</span></h1>
+    <div class="subtitle">From Gmail poll to sent reply · 14 steps across 5 swim lanes</div>
+  </div>
+
+  <!-- INGEST -->
+  <div class="lane">
+    <div class="lane-label red">Ingest</div>
+    <div class="steps">
+      <div class="step">
+        <div class="num num-red">1</div>
+        <div class="name">New email arrives</div>
+        <div class="info">Gmail receives message in INBOX</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-red">2</div>
+        <div class="name">History API poll</div>
+        <div class="info"><code>history().list()</code> since last historyId</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-red">3</div>
+        <div class="name">Fetch details</div>
+        <div class="info">Headers, body, To/Cc/Reply-To</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-orange">4</div>
+        <div class="name">Dedupe + store</div>
+        <div class="info">INSERT OR IGNORE on gmail_id &amp; Message-ID</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-orange">5</div>
+        <div class="name">Crash recovery</div>
+        <div class="info">Resume any category IS NULL rows</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UNDERSTAND -->
+  <div class="lane">
+    <div class="lane-label green">Understand</div>
+    <div class="steps">
+      <div class="step">
+        <div class="num num-green">6</div>
+        <div class="name">Categorize</div>
+        <div class="info">gpt-4o-mini → 1 of 4 labels</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-purple">7</div>
+        <div class="name">Gather context</div>
+        <div class="info">Branch on category + client status
+          <div class="branch-row">
+            <span class="branch-item b-portfolio">Portfolio → Sheets CSV</span>
+            <span class="branch-item b-advice">Advice → Tavily search</span>
+            <span class="branch-item b-referral">Referral → extract meta</span>
+          </div>
+        </div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-green">8</div>
+        <div class="name">Draft reply</div>
+        <div class="info">Category-specific system prompt &lt;150 words + signature</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-orange">9</div>
+        <div class="name">Save draft</div>
+        <div class="info">suggested_reply column updated</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW -->
+  <div class="lane">
+    <div class="lane-label pink">Review</div>
+    <div class="steps">
+      <div class="step">
+        <div class="num num-pink">10</div>
+        <div class="name">Notify Slack</div>
+        <div class="info">Summary msg + threaded detail with buttons</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-blue">11</div>
+        <div class="name">User action</div>
+        <div class="info">Send · Edit · Ignore</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="highlight">
+        <strong>Edit</strong> → user replies in thread → <code>refine_reply</code> with <code>conversation_history</code> → loop back to step 9<br>
+        <strong>Ignore</strong> → mark email ignored, stop
+      </div>
+    </div>
+  </div>
+
+  <!-- DELIVER -->
+  <div class="lane">
+    <div class="lane-label blue">Deliver</div>
+    <div class="steps">
+      <div class="step">
+        <div class="num num-red">12</div>
+        <div class="name">Route recipients</div>
+        <div class="info">
+          Referral 1st → To: referred, BCC: referrer<br>
+          Referral follow-up → To: referred only<br>
+          Other → To: sender, CC: original
+        </div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-red">13</div>
+        <div class="name">Send via Gmail</div>
+        <div class="info">threadId + In-Reply-To + References headers</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-orange">14</div>
+        <div class="name">Mark sent</div>
+        <div class="info">status → sent, mark_as_read</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="num num-pink">15</div>
+        <div class="name">Update thread</div>
+        <div class="info">Detail msg replaced with "Sent Reply" confirmation</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#ef5350;"></div>Gmail</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4caf50;"></div>LLM (OpenAI)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ab47bc;"></div>Context tools</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ec407a;"></div>Slack</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff9800;"></div>SQLite</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#42a5f5;"></div>User</div>
+  </div>
+</body>
+</html>

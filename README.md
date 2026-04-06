@@ -10,31 +10,33 @@ This system:
 3. **Generates** AI-powered suggested replies using context (portfolio data, web search)
 4. **Sends to Slack** — compact summary in channel, full details + action buttons in thread
 5. **Handles feedback** through Slack threads where users can request modifications
-6. **Sends replies** back via Gmail when approved (with CC support for referrals)
+6. **Sends replies** back via Gmail when approved
+7. **Smart referral routing** — first reply BCC's the referrer and addresses the referred person; follow-ups drop the referrer entirely
 
 ## Architecture
 
 ![System Architecture](docs/images/architecture.png)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Email Assistant                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Gmail API ──> [Email Processor] ──> Slack Bot              │
-│   (History     • Categorize        • Notify user            │
-│    API)        • Generate reply    • Handle actions          │
-│                • Call tools        • Thread mgmt             │
-│                                                             │
-│  Tools:                                                     │
-│  • Google Sheets (portfolio lookup)                         │
-│  • Tavily Web Search (investment research)                  │
-│  • OpenAI LLM (categorization & reply generation)           │
-│                                                             │
-│  Storage:                                                   │
-│  • SQLite (processed emails, thread mapping, history)       │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    Email Assistant                            │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Gmail API ──> [Email Processor] ──> Slack Bot               │
+│   (History     • Categorize        • Notify user             │
+│    API)        • Generate reply    • Handle actions           │
+│                • Referral routing  • Thread mgmt              │
+│                • Call tools        • BCC routing              │
+│                                                              │
+│  Tools:                                                      │
+│  • Google Sheets (portfolio lookup — public CSV, no auth)    │
+│  • Tavily Web Search (investment research)                   │
+│  • OpenAI LLM (categorization & reply generation)            │
+│                                                              │
+│  Storage:                                                    │
+│  • SQLite (processed emails, thread mapping, history)        │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ## Features
@@ -46,9 +48,10 @@ This system:
 - **Other**: General inquiries with best-effort responses
 
 ### Smart Context
-- **Portfolio Updates**: Fetch relevant portfolio data from Google Sheets
-- **Investment Advice**: Run web searches for current market data and research
-- **Referrals**: Detect multiple recipients (To/CC), include them in replies
+- **Portfolio Updates**: Fetch relevant portfolio data from Google Sheets (public CSV — no Google Cloud auth needed)
+- **Investment Advice**: Run Tavily web searches for current market data; known clients get research-backed advice, non-clients get a polite decline with a call invitation
+- **Referrals**: Detect referrer vs referred person(s) from To/CC; first reply thanks referrer (BCC'd) and welcomes referred; follow-ups address only the referred person
+- **Non-client awareness**: Context-aware identity handling — only asks for verification on client-sensitive requests, not general inquiries or referral threads
 
 ### User Interaction
 - Compact summary in Slack channel, full details in thread
@@ -69,10 +72,10 @@ For a detailed look at the system internals — Gmail reliability guarantees, em
 
 - **Python 3.9+**
 - **Google Account** with Gmail API enabled
-- **Google Cloud Project** with Sheets & Gmail APIs
+- **Google Cloud Project** with Gmail API (Sheets uses public CSV export — no Sheets API needed)
 - **Slack Workspace** with a Slack App (Socket Mode)
 - **OpenAI API Key** (for LLM)
-- **Tavily API Key** (optional, for web search)
+- **Tavily API Key** (optional, for web search on Investment Advice emails)
 
 ## Setup
 
@@ -92,9 +95,7 @@ pip install -r requirements.txt
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing
-3. Enable APIs:
-   - Gmail API
-   - Google Sheets API
+3. Enable the **Gmail API** (Google Sheets API is **not** needed — portfolio data is read from a public sheet via CSV export)
 4. Configure OAuth consent screen:
    - Set to **External** (or Internal if using Google Workspace)
    - Add your email as a **test user**
@@ -102,9 +103,10 @@ pip install -r requirements.txt
    - Go to "Credentials" > "Create Credentials" > "OAuth client ID"
    - Choose "Desktop application"
    - Download JSON file as `credentials.json` in the project root
-6. Set up a Google Sheet for portfolio data:
+6. Set up a **public** Google Sheet for portfolio data:
    - Sample sheet: https://docs.google.com/spreadsheets/d/1iboWR0CpWKRvzsw8wTIjeYo4UStzH9I1IzDZPWFCwUk/edit
-   - Columns: Client Name | Portfolio Value | Holdings | Risk Profile | Last Updated
+   - Columns: Name | Email | Portfolio Holdings | Current Net Worth | Expected Next Quarter Earnings | Has Beneficiary | Beneficiary Name
+   - Make sure the sheet is set to **"Anyone with the link can view"**
    - Copy the Sheet ID from the URL
 
 ### 3. Slack App Setup
@@ -244,15 +246,18 @@ email-assistant/
 │   ├── tools.py                # Web search, portfolio lookup
 │   └── utils.py                # Sanitization helpers
 ├── tests/
-│   ├── conftest.py             # Pytest fixtures
-│   ├── test_config.py          # Config validation tests
-│   ├── test_database.py        # Database tests
-│   ├── test_email_processor.py # Processor tests
-│   ├── test_gmail_client.py    # Gmail client tests
-│   ├── test_slack_bot.py       # Slack bot tests
+│   ├── conftest.py              # Pytest fixtures
+│   ├── test_config.py           # Config validation tests
+│   ├── test_database.py         # Database tests
+│   ├── test_email_processing.py # Email context, referral metadata, signatures
+│   ├── test_email_processor.py  # LLM categorization & reply tests
+│   ├── test_gmail_client.py     # Gmail client tests
+│   ├── test_referral_routing.py # Referral BCC routing & DB thread tracking
+│   ├── test_slack_bot.py        # Slack bot tests
 │   └── test_tools.py           # Tools tests
 ├── docs/
-│   └── HOW_IT_WORKS.md         # Detailed system internals documentation
+│   ├── HOW_IT_WORKS.md          # Detailed system internals documentation
+│   └── TESTING.md               # Test suite guide and conventions
 ├── requirements.txt            # Python dependencies
 ├── .env.example                # Environment template
 ├── .gitignore                  # Git ignore rules
@@ -283,8 +288,8 @@ Error: oauth2: "invalid_grant" "Token has been expired or revoked"
 
 ### Google Sheets Not Loading
 - Verify `GOOGLE_SHEET_ID` is correct
-- Verify the Google account has read access to the sheet
-- Check sheet has headers in first row
+- Verify the sheet is set to **"Anyone with the link can view"** (public access required — no Google Sheets API auth is used)
+- Check sheet has headers in the first row
 
 ## Production Improvements
 
