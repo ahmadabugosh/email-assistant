@@ -65,9 +65,10 @@ class SheetsClient:
         """
         all_portfolios = self._get_all_portfolios()
 
-        # Case-insensitive search
+        # Case-insensitive search (supports both "name" and "client name" headers)
         for portfolio in all_portfolios:
-            if portfolio.get("client name", "").lower() == client_name.lower():
+            name = portfolio.get("name", "") or portfolio.get("client name", "")
+            if name.lower() == client_name.lower():
                 return portfolio
 
         return None
@@ -109,7 +110,7 @@ class SheetsClient:
             # Read the sheet
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.sheet_id,
-                range="A1:F1000",
+                range="A1:L1000",
             ).execute()
             
             values = result.get("values", [])
@@ -131,7 +132,7 @@ class SheetsClient:
                     if i < len(row):
                         portfolio[header] = row[i]
                 
-                if portfolio.get("client name"):
+                if portfolio.get("name") or portfolio.get("client name"):
                     portfolios.append(portfolio)
             
             # Cache the result
@@ -147,11 +148,14 @@ class SheetsClient:
     
     def format_portfolio_context(self, portfolio: Dict[str, Any]) -> str:
         """Format portfolio data for LLM context."""
+        name = portfolio.get("name", "") or portfolio.get("client name", "Unknown")
         lines = [
-            f"Portfolio for: {portfolio.get('client name', 'Unknown')}",
-            f"Portfolio Value: {portfolio.get('portfolio value', 'N/A')}",
-            f"Holdings: {portfolio.get('holdings', 'N/A')}",
-            f"Risk Profile: {portfolio.get('risk profile', 'N/A')}",
-            f"Last Updated: {portfolio.get('last updated', 'N/A')}",
+            f"Client: {name}",
+            f"Portfolio Holdings: {portfolio.get('portfolio holdings', '') or portfolio.get('holdings', 'N/A')}",
+            f"Current Net Worth: {portfolio.get('current net worth ($)', '') or portfolio.get('portfolio value', 'N/A')}",
+            f"Expected Next Quarter Earnings: {portfolio.get('expected next quarter earnings ($)', 'N/A')}",
         ]
+        # Include beneficiary info if present
+        if portfolio.get("has beneficiary (y/n)", "").upper() == "Y":
+            lines.append(f"Beneficiary: {portfolio.get('beneficiary name', 'N/A')}")
         return "\n".join(lines)
