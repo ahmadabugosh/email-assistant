@@ -24,9 +24,9 @@ class ToolKit:
             return "Web search not available"
         
         try:
-            from tavily import Client
-            
-            client = Client(api_key=self.tavily_api_key)
+            from tavily import TavilyClient
+
+            client = TavilyClient(api_key=self.tavily_api_key)
             response = client.search(query, max_results=max_results)
             
             # Format results

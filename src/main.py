@@ -256,7 +256,7 @@ class EmailAssistant:
         if sender_email:
             client_portfolio = self.toolkit.lookup_portfolio_by_email(sender_email)
             if client_portfolio:
-                logger.info(f"Sender {sender_email} matched to client: {client_portfolio.get('client name')}")
+                logger.info(f"Sender {sender_email} matched to client: {client_portfolio.get('name') or client_portfolio.get('client name')}")
             else:
                 logger.info(f"Sender {sender_email} not found in client list")
 

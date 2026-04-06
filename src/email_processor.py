@@ -164,7 +164,13 @@ Body:
 
 {context if context else ""}
 
-Generate a professional, concise suggested reply. Keep it under 150 words."""
+Generate a professional, concise suggested reply. Keep it under 150 words.
+Always end the reply with this exact signature:
+
+Best regards,
+Sarah James
+Investment Adviser
+HSBC"""
 
         try:
             response = self.client.chat.completions.create(
@@ -261,8 +267,8 @@ Be concise, acknowledge the information, and offer insights if appropriate.
 Use formal but friendly tone.""",
 
             "Investment Advice": """You are a professional investment adviser providing thoughtful investment guidance.
-Base your suggestions on research and data provided. Be conservative in recommendations.
-Always mention risks and suggest consulting with a financial advisor if appropriate.""",
+You ARE the client's financial advisor — give direct, actionable advice based on the research provided.
+Be conservative in recommendations and mention risks, but do NOT tell them to "consult a financial advisor" — that's you.""",
 
             "Referrals": """You are a professional investment adviser responding to client referrals.
 Be warm, professional, and courteous. Follow the specific instructions about who to address.

@@ -439,15 +439,18 @@ class SlackBot:
         """Handle user messages in threads."""
         thread_ts = message["thread_ts"]
         user_message = message.get("text", "")
-        
-        # Look up email from thread
-        thread_data = self.database.get_slack_thread(thread_ts)
+
+        logger.info(f"Thread message received in {thread_ts}: {user_message[:80]}")
+
+        # Look up the most recent email in this Slack thread
+        thread_data = self.database.get_latest_slack_thread(thread_ts)
         if not thread_data:
             logger.warning(f"Thread {thread_ts} not found in database")
             return
-        
+
         email_db_id = thread_data["email_db_id"]
         email = self.database.get_email(email_db_id)
+        logger.info(f"Refining reply for email_db_id={email_db_id}, subject={email.get('subject')}")
         
         # Add to conversation history
         self.database.add_conversation(thread_ts, "user", user_message)

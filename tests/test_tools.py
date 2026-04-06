@@ -15,7 +15,7 @@ def test_web_search_not_configured():
 def test_web_search_returns_results():
     """Test web search with mocked Tavily client."""
     toolkit = ToolKit("fake-key", MagicMock())
-    with patch("tavily.Client") as MockClient:
+    with patch("tavily.TavilyClient") as MockClient:
         mock_client = MockClient.return_value
         mock_client.search.return_value = {
             "results": [
@@ -30,7 +30,7 @@ def test_web_search_returns_results():
 def test_web_search_no_results():
     """Test web search with no results."""
     toolkit = ToolKit("fake-key", MagicMock())
-    with patch("tavily.Client") as MockClient:
+    with patch("tavily.TavilyClient") as MockClient:
         mock_client = MockClient.return_value
         mock_client.search.return_value = {"results": []}
         result = toolkit.web_search("test")
@@ -40,7 +40,7 @@ def test_web_search_no_results():
 def test_web_search_error():
     """Test web search handles errors gracefully."""
     toolkit = ToolKit("fake-key", MagicMock())
-    with patch("tavily.Client") as MockClient:
+    with patch("tavily.TavilyClient") as MockClient:
         mock_client = MockClient.return_value
         mock_client.search.side_effect = Exception("API error")
         result = toolkit.web_search("test")

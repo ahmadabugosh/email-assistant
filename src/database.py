@@ -335,6 +335,20 @@ class Database:
                 logger.info(f"No Slack thread found for gmail thread {gmail_thread_id}")
             return dict(row) if row else None
 
+    def get_latest_slack_thread(self, thread_ts: str) -> Optional[Dict[str, Any]]:
+        """Get the most recent email in a Slack thread (for editing the latest reply)."""
+        with self.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            SELECT st.*, e.* FROM slack_threads st
+            JOIN emails e ON st.email_db_id = e.id
+            WHERE st.thread_ts = ?
+            ORDER BY e.created_at DESC
+            LIMIT 1
+            """, (thread_ts,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
     def get_slack_thread_for_email(self, email_id: int) -> Optional[Dict[str, Any]]:
         """Get slack thread for an email."""
         with self.get_db() as conn:
