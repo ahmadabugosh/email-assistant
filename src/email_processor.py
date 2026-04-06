@@ -71,34 +71,39 @@ Respond with ONLY the category name, nothing else."""
         self,
         email: Dict[str, Any],
         category: str,
-        toolkit_context: str = "",
+        client_portfolio: Dict[str, Any] = None,
     ) -> str:
         """
         Generate suggested reply using LLM.
         Includes context from toolkit (web search, portfolio data, etc).
+        client_portfolio: portfolio dict if sender is a known client, None otherwise.
         """
         subject = sanitize_for_prompt(email.get("subject", ""), max_length=200)
         body = sanitize_for_prompt(email.get("body", ""), max_length=1000)
         sender = sanitize_for_prompt(email.get("sender", ""), max_length=200)
 
-        # Build context based on category
+        is_known_client = client_portfolio is not None
+
+        # Build context based on category and client status
         context = ""
 
-        if category == "Portfolio Updates":
-            # Extract client name and lookup portfolio
-            client_name = self._extract_client_name(sender, body)
-            if client_name:
-                context = f"\n\nClient Portfolio Information:\n{self.toolkit.lookup_portfolio(client_name)}"
+        if not is_known_client:
+            context = "\n\nIMPORTANT: This sender was NOT found in our client list. "
+            context += "In your reply, politely mention that you could not find them in our client records. "
+            context += "Ask if they could provide more details (such as their registered email) so you can verify their account. "
+            context += "Also mention that if they are not yet a client, they are welcome to book a call to discuss how we can help them."
+
+        if category == "Portfolio Updates" and is_known_client:
+            portfolio_context = self.toolkit.sheets_client.format_portfolio_context(client_portfolio)
+            context += f"\n\nClient Portfolio Information:\n{portfolio_context}"
 
         elif category == "Investment Advice":
-            # Search for investment-related context
             query = self._extract_investment_query(body)
             if query:
                 search_results = self.toolkit.web_search(query)
-                context = f"\n\nRelevant Research:\n{search_results}"
+                context += f"\n\nRelevant Research:\n{search_results}"
 
         elif category == "Referrals":
-            # Include recipient info so the LLM knows who is on the email
             to = email.get("to", "")
             cc = email.get("cc", "")
             recipients_info = ""
@@ -106,7 +111,7 @@ Respond with ONLY the category name, nothing else."""
                 recipients_info += f"\nTo: {to}"
             if cc:
                 recipients_info += f"\nCC: {cc}"
-            context = f"\n\nThis is a referral email with multiple recipients.{recipients_info}\nAcknowledge the referrer and address the new client(s). Use a professional, courteous tone."
+            context += f"\n\nThis is a referral email with multiple recipients.{recipients_info}\nAcknowledge the referrer and address the new client(s). Use a professional, courteous tone."
 
         # Build system prompt based on category
         system_prompt = self._get_system_prompt(category)

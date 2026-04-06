@@ -1,6 +1,6 @@
 """Tools for email processing: web search, portfolio lookup, etc."""
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +48,17 @@ Snippet: {result.get('content', 'N/A')}
             return f"Search failed: {str(e)}"
     
     def lookup_portfolio(self, client_name: str) -> str:
-        """Look up portfolio data for a client."""
+        """Look up portfolio data for a client by name."""
         portfolio = self.sheets_client.get_portfolio(client_name)
-        
+
         if portfolio:
             return self.sheets_client.format_portfolio_context(portfolio)
         else:
             return f"No portfolio found for {client_name}"
+
+    def lookup_portfolio_by_email(self, email: str) -> Optional[Dict]:
+        """Look up portfolio data for a client by email. Returns raw dict or None."""
+        return self.sheets_client.get_portfolio_by_email(email)
     
     def extract_recipients(self, email_body: str, sender: str) -> List[str]:
         """Extract email recipients from body (for referral emails)."""

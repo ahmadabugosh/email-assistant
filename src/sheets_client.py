@@ -64,12 +64,27 @@ class SheetsClient:
         Search by client name in the sheet.
         """
         all_portfolios = self._get_all_portfolios()
-        
+
         # Case-insensitive search
         for portfolio in all_portfolios:
-            if portfolio.get("name", "").lower() == client_name.lower():
+            if portfolio.get("client name", "").lower() == client_name.lower():
                 return portfolio
-        
+
+        return None
+
+    def get_portfolio_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Get portfolio data by client email address.
+        More reliable than name matching.
+        """
+        all_portfolios = self._get_all_portfolios()
+
+        email_lower = email.lower().strip()
+        for portfolio in all_portfolios:
+            portfolio_email = portfolio.get("email", "").lower().strip()
+            if portfolio_email and portfolio_email == email_lower:
+                return portfolio
+
         return None
     
     def get_all_portfolios(self) -> List[Dict[str, Any]]:
@@ -94,7 +109,7 @@ class SheetsClient:
             # Read the sheet
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.sheet_id,
-                range="A1:E1000",
+                range="A1:F1000",
             ).execute()
             
             values = result.get("values", [])

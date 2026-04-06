@@ -4,6 +4,7 @@ import json
 import logging
 import signal
 import sys
+import re
 import threading
 from pathlib import Path
 
@@ -107,11 +108,17 @@ class EmailAssistant:
             "date": db_email.get("created_at", ""),
         }
 
+        # Look up sender in client list
+        sender_email = self._extract_email_address(db_email.get("sender", ""))
+        client_portfolio = None
+        if sender_email:
+            client_portfolio = self.toolkit.lookup_portfolio_by_email(sender_email)
+
         category = self.email_processor.categorize_email(email)
         self.database.update_email_category(email_db_id, category)
         logger.info(f"Recovered email {email_db_id} categorized as: {category}")
 
-        suggested_reply = self.email_processor.generate_reply(email, category)
+        suggested_reply = self.email_processor.generate_reply(email, category, client_portfolio=client_portfolio)
         self.database.update_email_suggested_reply(email_db_id, suggested_reply)
 
         try:
@@ -226,13 +233,23 @@ class EmailAssistant:
             logger.info(f"Email {gmail_id} already processed, skipping")
             return
 
+        # Look up sender in client list by email address
+        sender_email = self._extract_email_address(email.get("sender", ""))
+        client_portfolio = None
+        if sender_email:
+            client_portfolio = self.toolkit.lookup_portfolio_by_email(sender_email)
+            if client_portfolio:
+                logger.info(f"Sender {sender_email} matched to client: {client_portfolio.get('client name')}")
+            else:
+                logger.info(f"Sender {sender_email} not found in client list")
+
         # Categorize email
         category = self.email_processor.categorize_email(email)
         self.database.update_email_category(email_db_id, category)
         logger.info(f"Email {gmail_id} categorized as: {category}")
 
-        # Generate reply
-        suggested_reply = self.email_processor.generate_reply(email, category)
+        # Generate reply (with client context if known)
+        suggested_reply = self.email_processor.generate_reply(email, category, client_portfolio=client_portfolio)
         self.database.update_email_suggested_reply(email_db_id, suggested_reply)
         logger.info(f"Generated reply for email {gmail_id}")
 
@@ -275,6 +292,12 @@ class EmailAssistant:
             logger.error(f"Fatal error: {e}", exc_info=True)
             raise
     
+    @staticmethod
+    def _extract_email_address(sender: str) -> str:
+        """Extract email address from a From header like 'John Smith <john@email.com>'."""
+        match = re.search(r'[\w.+-]+@[\w.-]+\.\w+', sender)
+        return match.group(0).lower() if match else ""
+
     def _shutdown(self) -> None:
         """Handle shutdown signal."""
         logger.info("Shutting down...")
