@@ -66,6 +66,12 @@ def handle_callback(callback_url: str, state: str, app_url: str) -> str:
     redirect_uri = f"{app_url}/setup/gmail/callback"
     client_config = _get_client_config()
 
+    # Behind a reverse proxy (Railway, ngrok) Flask sees http:// but
+    # the actual public URL is https://.  Google's oauthlib rejects
+    # http callback URLs, so rewrite to match the real scheme.
+    if app_url.startswith("https://") and callback_url.startswith("http://"):
+        callback_url = "https://" + callback_url[len("http://"):]
+
     flow = Flow.from_client_config(
         client_config, scopes=SCOPES, redirect_uri=redirect_uri, state=state,
     )
