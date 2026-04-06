@@ -61,8 +61,13 @@ def create_app(config_store: ConfigStore = None) -> Flask:
             flash("OAuth state missing. Please try again.", "error")
             return redirect(url_for("setup_gmail"))
 
+        code = request.args.get("code")
+        if not code:
+            flash("No authorization code received.", "error")
+            return redirect(url_for("setup_gmail"))
+
         try:
-            oauth_gmail.handle_callback(request.url, state, _app_url())
+            oauth_gmail.handle_callback(code, state, _app_url())
             flash("Gmail connected successfully!", "success")
         except Exception as e:
             logger.error(f"Gmail OAuth error: {e}", exc_info=True)
