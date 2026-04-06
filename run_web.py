@@ -4,8 +4,14 @@ Usage:
     Local:   python run_web.py
     Railway: gunicorn -w 1 --bind 0.0.0.0:$PORT run_web:app
 """
-import logging
 import os
+
+# Must be set before any oauthlib import anywhere in the process.
+# Railway terminates TLS at the edge and proxies to the container over
+# plain HTTP — this tells oauthlib to accept that.
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
+import logging
 
 from src.web.config_store import ConfigStore
 from src.web.app import create_app, _try_start_assistant

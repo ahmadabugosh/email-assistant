@@ -2,10 +2,6 @@
 import logging
 import os
 
-# Allow OAuth over HTTP behind a trusted reverse proxy (Railway serves
-# HTTPS externally but forwards to the container over HTTP).
-os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
-
 from flask import Flask, redirect, render_template, request, flash, session, url_for
 from slack_bolt.adapter.flask import SlackRequestHandler
 
